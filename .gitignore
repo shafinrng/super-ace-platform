@@ -1,0 +1,23 @@
+# Secrets
+.env
+.env.local
+
+# Logs
+*.log
+audit.log
+
+# Dependencies
+node_modules/
+
+# Build
+.next/
+dist/
+build/
+
+# Database
+*.sql
+*.dump
+
+# OS
+.DS_Store
+Thumbs.db
