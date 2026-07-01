@@ -1,0 +1,12 @@
+import express from "express";
+import cors from "cors";
+import helmet from "helmet";
+import walletRoutes from "./routes/wallet.routes";
+const app = express();
+const PORT = process.env.WALLET_SERVICE_PORT || 3003;
+app.use(helmet()); app.use(cors()); app.use(express.json());
+app.use("/api/wallet", walletRoutes);
+app.get("/health", (_req, res) => res.json({ status: "ok", service: "wallet-service", timestamp: new Date() }));
+app.use((err: any, _req: any, res: any, _next: any) => res.status(err.statusCode || 500).json({ error: err.message }));
+app.listen(PORT, () => console.log(`✅ Wallet Service running on port ${PORT}`));
+export default app;

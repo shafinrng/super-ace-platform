@@ -1,0 +1,10 @@
+import { Router } from "express";
+import { authenticate } from "../middleware/auth";
+import { createDeposit, checkPaymentStatus, createWithdrawal, getPaymentHistory, handleWebhook } from "../controllers/payment.controller";
+const router = Router();
+router.post("/deposit", authenticate, createDeposit);
+router.get("/status/:paymentId", authenticate, checkPaymentStatus);
+router.post("/withdraw", authenticate, createWithdrawal);
+router.get("/history", authenticate, getPaymentHistory);
+router.post("/webhook/binance", handleWebhook);
+export default router;

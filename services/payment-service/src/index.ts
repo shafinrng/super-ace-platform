@@ -1,0 +1,12 @@
+import express from "express";
+import cors from "cors";
+import helmet from "helmet";
+import paymentRoutes from "./routes/payment.routes";
+const app = express();
+const PORT = process.env.PAYMENT_SERVICE_PORT || 3004;
+app.use(helmet()); app.use(cors()); app.use(express.json());
+app.use("/api/payment", paymentRoutes);
+app.get("/health", (_req, res) => res.json({ status: "ok", service: "payment-service", timestamp: new Date() }));
+app.use((err:any, _req:any, res:any, _next:any) => res.status(err.statusCode||500).json({ error: err.message||"Internal Server Error" }));
+app.listen(PORT, () => console.log(`✅ Payment Service running on port ${PORT}`));
+export default app;

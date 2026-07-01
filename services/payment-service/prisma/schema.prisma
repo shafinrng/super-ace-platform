@@ -1,0 +1,38 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+model Payment {
+  id             String        @id @default(uuid())
+  userId         String
+  type           PaymentType
+  method         String        @default("BINANCE")
+  amount         Decimal       @db.Decimal(18, 8)
+  currency       String        @default("USDT")
+  status         PaymentStatus @default(PENDING)
+  binanceOrderId String?       @unique
+  txHash         String?
+  walletAddress  String?
+  prepayId       String?
+  qrCode         String?
+  expireTime     DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  @@map("payments")
+}
+enum PaymentType {
+  DEPOSIT
+  WITHDRAWAL
+}
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  EXPIRED
+  CANCELLED
+}

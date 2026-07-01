@@ -1,0 +1,151 @@
+version: '3.9'
+
+services:
+  # ─── DATABASES ───────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: superace_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - superace_net
+
+  mongodb:
+    image: mongo:7-jammy
+    container_name: superace_mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+    ports:
+      - "${MONGO_PORT}:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - superace_net
+
+  redis:
+    image: redis:7-alpine
+    container_name: superace_redis
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    ports:
+      - "${REDIS_PORT}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - superace_net
+
+  # ─── SERVICES ────────────────────────────────────────────
+  auth-service:
+    build: ./services/auth-service
+    container_name: superace_auth
+    restart: unless-stopped
+    ports:
+      - "${AUTH_SERVICE_PORT}:3001"
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN}
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
+      - NODE_ENV=${NODE_ENV}
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - superace_net
+
+  game-engine:
+    build: ./services/game-engine
+    container_name: superace_game
+    restart: unless-stopped
+    ports:
+      - "${GAME_ENGINE_PORT}:3002"
+    environment:
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
+      - MONGO_URL=mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongodb:27017
+      - NODE_ENV=${NODE_ENV}
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - superace_net
+
+  wallet-service:
+    build: ./services/wallet-service
+    container_name: superace_wallet
+    restart: unless-stopped
+    ports:
+      - "${WALLET_SERVICE_PORT}:3003"
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
+      - NODE_ENV=${NODE_ENV}
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - superace_net
+
+  payment-service:
+    build: ./services/payment-service
+    container_name: superace_payment
+    restart: unless-stopped
+    ports:
+      - "${PAYMENT_SERVICE_PORT}:3004"
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - BINANCE_API_KEY=${BINANCE_API_KEY}
+      - BINANCE_SECRET_KEY=${BINANCE_SECRET_KEY}
+      - NODE_ENV=${NODE_ENV}
+    depends_on:
+      - postgres
+    networks:
+      - superace_net
+
+  websocket-service:
+    build: ./services/websocket-service
+    container_name: superace_ws
+    restart: unless-stopped
+    ports:
+      - "${WEBSOCKET_PORT}:3005"
+    environment:
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
+      - NODE_ENV=${NODE_ENV}
+    depends_on:
+      - redis
+    networks:
+      - superace_net
+
+  frontend:
+    build: ./frontend
+    container_name: superace_frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+      - NEXT_PUBLIC_WS_URL=${NEXT_PUBLIC_WS_URL}
+    depends_on:
+      - auth-service
+      - game-engine
+      - wallet-service
+    networks:
+      - superace_net
+
+# ─── VOLUMES & NETWORKS ──────────────────────────────────
+volumes:
+  postgres_data:
+  mongo_data:
+  redis_data:
+
+networks:
+  superace_net:
+    driver: bridge

@@ -1,0 +1,23 @@
+{
+  "name": "websocket-service",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "node_modules\\.bin\\nodemon --watch src --ext ts --exec node_modules\\.bin\\ts-node src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "ioredis": "^5.11.1",
+    "ws": "^8.21.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.43",
+    "@types/ws": "^8.18.1",
+    "nodemon": "^3.1.14",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  },
+  "author": "slim_shafin",
+  "license": "ISC"
+}

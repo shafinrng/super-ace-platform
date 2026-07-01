@@ -1,0 +1,13 @@
+{
+  "name": "wallet-service",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "nodemon --watch src --ext ts --exec ts-node src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "prisma:migrate": "prisma migrate dev"
+  },
+  "author": "slim_shafin",
+  "license": "ISC"
+}
