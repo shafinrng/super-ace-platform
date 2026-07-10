@@ -1,5 +1,5 @@
 import { Router, Request, Response } from "express";
-import { spin } from "../engine/SuperAceGame";
+import { spin, calculateWinFromStops } from "../engine/SuperAceGame";
 import { getTargetRtp, setTargetRtp, getActualRtp, resetRtpStats, getPlayerRtp, setPlayerRtp, deletePlayerRtp, getAllPlayerRtps } from "../engine/RtpController";
 
 const router = Router();
@@ -12,6 +12,22 @@ router.post("/spin", async (req: Request, res: Response) => {
     }
     const result = await spin({ userId, betAmount, isFreeSpinMode, freeSpinMultiplier });
     res.json({ success: true, result });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Used by saga-service: takes provably-fair stops (from rng-service) and computes
+// the actual grid + wins from the published reel strips. This is the decomposed
+// counterpart to /spin, used when the caller already has verified stops.
+router.post("/calculate-win", async (req: Request, res: Response) => {
+  try {
+    const { stops, betAmount, playerId, isFreeSpinMode, freeSpinMultiplier } = req.body;
+    if (!Array.isArray(stops) || !betAmount || betAmount <= 0 || !playerId) {
+      return res.status(400).json({ error: "stops, betAmount, and playerId are required" });
+    }
+    const result = await calculateWinFromStops(stops, betAmount, playerId, isFreeSpinMode, freeSpinMultiplier);
+    res.json({ success: true, winAmount: result.totalWin, result });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

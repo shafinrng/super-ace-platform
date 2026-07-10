@@ -4,10 +4,10 @@ import Redis from "ioredis";
 
 const redis = new Redis({ host: process.env.REDIS_HOST || "localhost", port: 6379 });
 
-const WALLET_URL = process.env.WALLET_URL || "http://wallet-service:3003";
-const RNG_URL = process.env.RNG_URL || "http://rng-service:3010";
-const GAME_URL = process.env.GAME_URL || "http://game-engine:3002";
-const SESSION_URL = process.env.SESSION_URL || "http://session-service:3008";
+const WALLET_URL = process.env.WALLET_URL || "http://localhost:3003";
+const RNG_URL = process.env.RNG_URL || "http://localhost:3010";
+const GAME_URL = process.env.GAME_URL || "http://localhost:3002";
+const SESSION_URL = process.env.SESSION_URL || "http://localhost:3008";
 
 export interface SpinSaga {
   sagaId: string;
@@ -32,6 +32,12 @@ export async function getSaga(sagaId: string): Promise<SpinSaga | null> {
   return data ? JSON.parse(data) : null;
 }
 
+// Ensures a server seed exists for this player before spinning.
+// rng-service requires /seed to be called first; safe to call repeatedly (it just regenerates).
+async function ensureSeed(playerId: string) {
+  await axios.post(`${RNG_URL}/seed`, { playerId });
+}
+
 export async function executeSpinSaga(params: {
   playerId: string; sessionId: string; betAmount: number; currency: string;
   clientSeed: string; reelLengths: number[];
@@ -45,28 +51,27 @@ export async function executeSpinSaga(params: {
 
     saga.status = "bet_deducted";
     await logSaga(saga);
-
-    const deductRes = await axios.post(`${WALLET_URL}/wallet/deduct`, {
-      playerId: params.playerId, amount: params.betAmount, currency: params.currency,
-      referenceId: sagaId, type: "bet",
+    const deductRes = await axios.post(`${WALLET_URL}/api/wallet/service/bet`, {
+      userId: params.playerId, amount: params.betAmount,
     });
     if (!deductRes.data.success) throw new Error("Wallet deduction failed");
 
     saga.status = "spin_generated";
     await logSaga(saga);
-
+    await ensureSeed(params.playerId);
     const spinRes = await axios.post(`${RNG_URL}/spin`, {
       playerId: params.playerId, clientSeed: params.clientSeed, reelLengths: params.reelLengths,
     });
     const { stops, nonce } = spinRes.data;
 
-    const winRes = await axios.post(`${GAME_URL}/calculate-win`, { stops, betAmount: params.betAmount });
+    const winRes = await axios.post(`${GAME_URL}/api/game/calculate-win`, {
+      stops, betAmount: params.betAmount, playerId: params.playerId,
+    });
     const winAmount = winRes.data.winAmount;
 
     if (winAmount > 0) {
-      await axios.post(`${WALLET_URL}/wallet/credit`, {
-        playerId: params.playerId, amount: winAmount, currency: params.currency,
-        referenceId: sagaId, type: "win",
+      await axios.post(`${WALLET_URL}/api/wallet/service/win`, {
+        userId: params.playerId, amount: winAmount, reference: sagaId,
       });
     }
 
@@ -76,20 +81,17 @@ export async function executeSpinSaga(params: {
     saga.result = { stops, winAmount, nonce };
     await logSaga(saga);
     await axios.post(`${SESSION_URL}/session/${params.sessionId}/unlock`);
-
     return saga;
-
   } catch (error: any) {
     const previousStatus = saga.status;
     saga.status = "compensating";
-    saga.error = error.message;
+    saga.error = error.response?.data?.error || error.message;
     await logSaga(saga);
 
     try {
       if (previousStatus === "bet_deducted" || previousStatus === "spin_generated") {
-        await axios.post(`${WALLET_URL}/wallet/credit`, {
-          playerId: params.playerId, amount: params.betAmount, currency: params.currency,
-          referenceId: `${sagaId}:refund`, type: "refund",
+        await axios.post(`${WALLET_URL}/api/wallet/service/win`, {
+          userId: params.playerId, amount: params.betAmount, reference: `${sagaId}:refund`,
         });
       }
     } catch (compError) {
@@ -99,10 +101,9 @@ export async function executeSpinSaga(params: {
     }
 
     try { await axios.post(`${SESSION_URL}/session/${params.sessionId}/unlock`); } catch {}
+
     saga.status = "failed";
     await logSaga(saga);
     return saga;
   }
 }
-
-
