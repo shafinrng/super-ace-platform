@@ -18,7 +18,17 @@ export interface SpinSaga {
   clientSeed: string;
   reelLengths: number[];
   status: "started" | "bet_deducted" | "spin_generated" | "completed" | "compensating" | "failed";
-  result?: { stops: number[]; winAmount: number; nonce: number; };
+  result?: {
+    stops: number[];
+    winAmount: number;
+    nonce: number;
+    grid?: any;
+    wins?: any;
+    cascades?: any;
+    multiplier?: number;
+    freeSpinsAwarded?: number;
+    isFreeSpinMode?: boolean;
+  };
   error?: string;
   createdAt: number;
 }
@@ -68,6 +78,7 @@ export async function executeSpinSaga(params: {
       stops, betAmount: params.betAmount, playerId: params.playerId,
     });
     const winAmount = winRes.data.winAmount;
+    const fullResult = winRes.data.result || {};
 
     if (winAmount > 0) {
       await axios.post(`${WALLET_URL}/api/wallet/service/win`, {
@@ -78,7 +89,7 @@ export async function executeSpinSaga(params: {
     await axios.patch(`${SESSION_URL}/session/${params.sessionId}`, { status: "completed", nonce });
 
     saga.status = "completed";
-    saga.result = { stops, winAmount, nonce };
+    saga.result = { stops, winAmount, nonce, ...fullResult };
     await logSaga(saga);
     await axios.post(`${SESSION_URL}/session/${params.sessionId}/unlock`);
     return saga;

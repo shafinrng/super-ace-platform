@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useGameStore } from "@/store/gameStore";
-import { login, getBalance, placeBet, creditWin, spinGame } from "@/lib/api";
+import { login, getBalance, createGameSession, spinSaga } from "@/lib/api";
 import { WinCelebration } from "@/components/WinCelebration";
 
 const SYMBOL_IMAGES: Record<string,string> = {
@@ -97,7 +97,7 @@ export default function GamePage() {
   useEffect(()=>{
     if(!userId) return;
     const ws = new WebSocket(`ws://localhost:3005?userId=${userId}`);
-    ws.onopen = () => console.log("🎰 Game WS connected");
+    ws.onopen = () => console.log("Game WS connected");
     ws.onmessage = (e) => {
       try {
         const data = JSON.parse(e.data);
@@ -105,7 +105,7 @@ export default function GamePage() {
       } catch(err) {}
     };
     ws.onerror = (err) => console.error("WS error:", err);
-    ws.onclose = () => console.log("🎰 Game WS disconnected");
+    ws.onclose = () => console.log("Game WS disconnected");
     return () => ws.close();
   },[userId]);
 
@@ -133,10 +133,13 @@ export default function GamePage() {
     winShownRef.current = false;
     setSpinDeg(d=>d+720);
     try {
-      await placeBet(tkn,bet);
+      const clientSeed = `seed-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const sessionRes = await createGameSession(userIdRef.current, bet, clientSeed);
+      const sessionId = sessionRes.data.sessionId;
       setBalance((b:number)=>Number((b-bet).toFixed(8)));
-      const res=await spinGame(tkn,bet,freeMode,userIdRef.current);
-      const result=res.data.result;
+      const sagaRes = await spinSaga(userIdRef.current, sessionId, bet, clientSeed);
+      if (!sagaRes.data.success) throw new Error(sagaRes.data.saga?.error || "Saga failed");
+      const result = sagaRes.data.saga.result;
       setGrid(result.grid);
       setIsNewGrid(true);
       setMultiplier(result.multiplier);
@@ -148,7 +151,6 @@ export default function GamePage() {
       result.cascades.forEach((c:any)=>c.wins.forEach((w:any)=>w.positions.forEach(([reel,row]:number[])=>winPos.push(`${reel}-${row}`))));
       setWinPositions(winPos);
       if(result.totalWin>0) {
-        await creditWin(tkn,result.totalWin,`spin-${Date.now()}`);
         setBalance((b:number)=>Number((b+result.totalWin).toFixed(8)));
         setLastWin(result.totalWin);
         await new Promise(r=>setTimeout(r,turbo?150:500));
@@ -159,7 +161,7 @@ export default function GamePage() {
         }
       }
       if(result.freeSpinsAwarded>0) setFreeSpinMode(true,result.freeSpinsAwarded);
-    } catch { setMessage("Spin error"); }
+    } catch (err:any) { setMessage(err.message || "Spin error"); }
     finally { setSpinning(false); }
   },[]);
 
@@ -181,7 +183,7 @@ export default function GamePage() {
       <div style={{ background:"linear-gradient(180deg,#2a1510,#1a0a06)",border:"2px solid #d4af37",borderRadius:"16px",padding:"32px 24px",width:"100%",maxWidth:"340px",boxShadow:"0 0 40px rgba(212,175,55,0.3)" }}>
         <h1 style={{ fontFamily:"serif",fontSize:"38px",fontWeight:900,textAlign:"center",margin:"0 0 4px",
           background:"linear-gradient(180deg,#fff1a8,#d4af37,#a07d20)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent" }}>Super Ace</h1>
-        <p style={{ textAlign:"center",color:"#99907c",marginBottom:"20px",fontSize:"12px" }}>VIP Casino · Est. 2024</p>
+        <p style={{ textAlign:"center",color:"#99907c",marginBottom:"20px",fontSize:"12px" }}>VIP Casino - Est. 2024</p>
         <input style={{ width:"100%",padding:"11px",marginBottom:"10px",background:"#1a0a06",border:"1px solid rgba(212,175,55,0.5)",borderRadius:"8px",color:"#ffdad4",fontSize:"14px",boxSizing:"border-box" }}
           placeholder="Email" value={email} onChange={e=>setEmail(e.target.value)} />
         <input style={{ width:"100%",padding:"11px",marginBottom:"18px",background:"#1a0a06",border:"1px solid rgba(212,175,55,0.5)",borderRadius:"8px",color:"#ffdad4",fontSize:"14px",boxSizing:"border-box" }}
@@ -200,7 +202,6 @@ export default function GamePage() {
 
         {showWin&&<WinCelebration amount={winAmount} onClose={()=>{setShowWin(false);winShownRef.current=false;}} />}
 
-        {/* Bet panel */}
         {showBetPanel&&(
           <div onClick={()=>setShowBetPanel(false)} style={{ position:"absolute",inset:0,zIndex:50,background:"rgba(0,0,0,0.7)",display:"flex",alignItems:"flex-end" }}>
             <div onClick={e=>e.stopPropagation()} style={{ width:"100%",background:"linear-gradient(180deg,#2a1510,#1a0a06)",borderTop:"2px solid rgba(212,175,55,0.4)",borderRadius:"16px 16px 0 0",padding:"16px" }}>
@@ -218,7 +219,6 @@ export default function GamePage() {
           </div>
         )}
 
-        {/* Auto panel */}
         {showAutoPanel&&(
           <div onClick={()=>setShowAutoPanel(false)} style={{ position:"absolute",inset:0,zIndex:50,background:"rgba(0,0,0,0.7)",display:"flex",alignItems:"flex-end" }}>
             <div onClick={e=>e.stopPropagation()} style={{ width:"100%",background:"linear-gradient(180deg,#2a1510,#1a0a06)",borderTop:"2px solid rgba(168,85,247,0.4)",borderRadius:"16px 16px 0 0",padding:"16px" }}>
@@ -227,7 +227,7 @@ export default function GamePage() {
                 {AUTO_OPTIONS.map(n=>(
                   <button key={n} onClick={()=>{setAutoSpins(n);setIsAuto(true);setShowAutoPanel(false);}}
                     style={{ padding:"12px 0",borderRadius:"8px",border:"2px solid rgba(168,85,247,0.5)",cursor:"pointer",
-                      background:"rgba(168,85,247,0.15)",color:"#d8b4fe",fontWeight:700,fontSize:"15px" }}>{n}×</button>
+                      background:"rgba(168,85,247,0.15)",color:"#d8b4fe",fontWeight:700,fontSize:"15px" }}>{n}x</button>
                 ))}
               </div>
               {isAuto&&(
@@ -239,12 +239,11 @@ export default function GamePage() {
           </div>
         )}
 
-        {/* TOP BAR */}
         <div style={{ padding:"8px 10px 6px",background:"linear-gradient(180deg,#2a1510,#1a0a06)",borderBottom:"1px solid rgba(212,175,55,0.3)",flexShrink:0 }}>
           <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"5px" }}>
             <h1 style={{ fontFamily:"serif",fontSize:"18px",fontWeight:900,margin:0,
-              background:"linear-gradient(180deg,#fff1a8,#d4af37)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent" }}>⚡ Super Ace</h1>
-            <span style={{ color:"#99907c",fontSize:"10px" }}>👥 {onlinePlayers}</span>
+              background:"linear-gradient(180deg,#fff1a8,#d4af37)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent" }}>Super Ace</h1>
+            <span style={{ color:"#99907c",fontSize:"10px" }}>{onlinePlayers} online</span>
             <div style={{ textAlign:"right" }}>
               <div style={{ color:"#99907c",fontSize:"9px" }}>BALANCE</div>
               <div style={{ color:"#4ade80",fontWeight:700,fontSize:"14px" }}>{Number(balance).toFixed(2)}</div>
@@ -253,12 +252,10 @@ export default function GamePage() {
           <JackpotBar jackpots={jackpots} />
         </div>
 
-        {/* MULTIPLIER */}
         <div style={{ padding:"5px",flexShrink:0,display:"flex",justifyContent:"center" }}>
           <MultiplierBar current={multiplier} />
         </div>
 
-        {/* GAME GRID */}
         <div style={{ flex:1,padding:"0 6px",minHeight:0 }}>
           <div style={{ height:"100%",background:"radial-gradient(ellipse at center,#0d3518,#0a2a12 60%,#061a0b)",
             border:"2px solid rgba(212,175,55,0.4)",borderRadius:"12px",padding:"5px",
@@ -277,7 +274,6 @@ export default function GamePage() {
           </div>
         </div>
 
-        {/* WIN BAR */}
         <div style={{ height:"28px",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
           {lastWin>0?(
             <div style={{ display:"flex",alignItems:"center",gap:"6px" }}>
@@ -287,30 +283,27 @@ export default function GamePage() {
                 {lastWin.toFixed(2)}
               </span>
               <span style={{ color:"#99907c",fontSize:"10px" }}>USDT</span>
-              {cascadeStep>0&&<span style={{ color:"#a855f7",fontSize:"9px" }}>×{cascadeStep} cascade</span>}
+              {cascadeStep>0&&<span style={{ color:"#a855f7",fontSize:"9px" }}>x{cascadeStep} cascade</span>}
             </div>
           ):isFreeSpinMode?(
-            <span style={{ color:"#a855f7",fontWeight:700,fontSize:"12px" }}>🌟 FREE SPINS: {freeSpinsLeft}</span>
+            <span style={{ color:"#a855f7",fontWeight:700,fontSize:"12px" }}>FREE SPINS: {freeSpinsLeft}</span>
           ):null}
         </div>
 
-        {/* BOTTOM CONTROLS */}
         <div style={{ flexShrink:0,background:"linear-gradient(180deg,#2a1510,#1a0a06)",borderTop:"2px solid rgba(212,175,55,0.3)",padding:"8px 10px 12px" }}>
           <div style={{ display:"flex",alignItems:"center",gap:"6px" }}>
 
-            {/* TURBO */}
             <button onClick={()=>setIsTurbo(t=>!t)} style={{ width:"46px",height:"46px",borderRadius:"999px",flexShrink:0,
               border:`2px solid ${isTurbo?"#fbbf24":"rgba(212,175,55,0.3)"}`,cursor:"pointer",
               background:isTurbo?"radial-gradient(circle,#fbbf24,#d97706)":"rgba(15,8,4,0.9)",
               display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
               boxShadow:isTurbo?"0 0 14px rgba(251,191,36,0.8)":"none",transition:"all 0.2s" }}>
-              <span style={{ fontSize:"16px",lineHeight:1 }}>⚡</span>
+              <span style={{ fontSize:"16px",lineHeight:1 }}>&#9889;</span>
               <span style={{ fontSize:"7px",color:isTurbo?"#3c2f00":"#d4af37",fontWeight:700,marginTop:"1px" }}>TURBO</span>
             </button>
 
-            {/* BET CONTROLS */}
             <div style={{ flex:1,display:"flex",alignItems:"center",gap:"3px" }}>
-              <button onClick={()=>changeBet(-1)} style={{ width:"28px",height:"28px",borderRadius:"999px",border:"2px solid rgba(212,175,55,0.4)",background:"rgba(15,8,4,0.9)",color:"#d4af37",fontSize:"18px",fontWeight:900,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1 }}>−</button>
+              <button onClick={()=>changeBet(-1)} style={{ width:"28px",height:"28px",borderRadius:"999px",border:"2px solid rgba(212,175,55,0.4)",background:"rgba(15,8,4,0.9)",color:"#d4af37",fontSize:"18px",fontWeight:900,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1 }}>-</button>
               <button onClick={()=>setShowBetPanel(true)} style={{ flex:1,padding:"6px 4px",borderRadius:"10px",
                 border:"2px solid rgba(212,175,55,0.4)",background:"rgba(15,8,4,0.9)",cursor:"pointer",textAlign:"center" }}>
                 <div style={{ color:"#99907c",fontSize:"8px",lineHeight:1 }}>BET</div>
@@ -319,7 +312,6 @@ export default function GamePage() {
               <button onClick={()=>changeBet(1)} style={{ width:"28px",height:"28px",borderRadius:"999px",border:"2px solid rgba(212,175,55,0.4)",background:"rgba(15,8,4,0.9)",color:"#d4af37",fontSize:"18px",fontWeight:900,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1 }}>+</button>
             </div>
 
-            {/* SPIN */}
             <button onClick={isAuto?()=>{setIsAuto(false);setAutoSpins(0);}:handleSpin}
               disabled={isSpinning&&!isAuto}
               style={{ width:"76px",height:"76px",borderRadius:"999px",border:"none",cursor:"pointer",background:"transparent",padding:0,flexShrink:0,position:"relative" }}>
@@ -338,16 +330,14 @@ export default function GamePage() {
               )}
             </button>
 
-            {/* AUTO CONTROLS */}
             <div style={{ flex:1,display:"flex",alignItems:"center",gap:"3px" }}>
               <button onClick={()=>setShowAutoPanel(true)} style={{ flex:1,padding:"6px 4px",borderRadius:"10px",
                 border:`2px solid ${isAuto?"rgba(168,85,247,0.6)":"rgba(212,175,55,0.4)"}`,background:"rgba(15,8,4,0.9)",cursor:"pointer",textAlign:"center" }}>
                 <div style={{ color:"#99907c",fontSize:"8px",lineHeight:1 }}>AUTO</div>
-                <div style={{ color:isAuto?"#d8b4fe":"#d4af37",fontWeight:700,fontSize:"14px",lineHeight:1.2 }}>{isAuto?`${autoSpins}×`:"OFF"}</div>
+                <div style={{ color:isAuto?"#d8b4fe":"#d4af37",fontWeight:700,fontSize:"14px",lineHeight:1.2 }}>{isAuto?`${autoSpins}x`:"OFF"}</div>
               </button>
             </div>
 
-            {/* MENU */}
             <button style={{ width:"46px",height:"46px",borderRadius:"999px",flexShrink:0,
               border:"2px solid rgba(212,175,55,0.3)",cursor:"pointer",
               background:"rgba(15,8,4,0.9)",display:"flex",flexDirection:"column",
