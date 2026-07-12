@@ -1,7 +1,7 @@
-version: "3.9"
+﻿version: "3.9"
 
 services:
-  # ── Infrastructure ──
+  # â”€â”€ Infrastructure â”€â”€
   redis:
     image: redis:7-alpine
     container_name: superace_redis
@@ -33,7 +33,7 @@ services:
       - mongo_data:/data/db
     restart: unless-stopped
 
-  # ── Core Services ──
+  # â”€â”€ Core Services â”€â”€
   auth-service:
     build: ./services/auth-service
     ports:
@@ -93,6 +93,20 @@ services:
       - redis
     restart: unless-stopped
 
+
+  admin-service:
+    build: ./services/admin-service
+    ports:
+      - "3006:3006"
+    environment:
+      - PORT=3006
+      - JWT_SECRET=superace-docker-jwt-secret-2024
+      - DATABASE_URL=postgresql://superace:superace123@postgres:5432/superace_db
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
   admin-panel:
     build: ./admin-panel
     ports:
@@ -101,7 +115,7 @@ services:
       - PORT=3007
     restart: unless-stopped
 
-  # ── Production v2 Services ──
+  # â”€â”€ Production v2 Services â”€â”€
   session-service:
     build: ./services/session-service
     ports:
@@ -224,7 +238,7 @@ services:
       - postgres
     restart: unless-stopped
 
-  # ── Frontend ──
+  # â”€â”€ Frontend â”€â”€
   frontend:
     build: ./frontend
     ports:
@@ -238,3 +252,4 @@ volumes:
   redis_data:
   postgres_data:
   mongo_data:
+

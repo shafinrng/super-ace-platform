@@ -1,10 +1,11 @@
 ﻿FROM node:20-alpine
+RUN apk add --no-cache openssl
 WORKDIR /app
 COPY package*.json ./
 RUN npm install && npm install -g typescript ts-node
 COPY . .
+RUN npx prisma generate
 RUN npx tsc
 EXPOSE 3004
 ENV PORT=3004
-ENV DATABASE_URL=postgresql://superace:superace123@postgres:5432/superace_db
 CMD ["node", "dist/index.js"]
