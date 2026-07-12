@@ -8,6 +8,7 @@ const WALLET_URL = process.env.WALLET_URL || "http://localhost:3003";
 const RNG_URL = process.env.RNG_URL || "http://localhost:3010";
 const GAME_URL = process.env.GAME_URL || "http://localhost:3002";
 const SESSION_URL = process.env.SESSION_URL || "http://localhost:3008";
+const JACKPOT_URL = process.env.JACKPOT_URL || "http://localhost:3011";
 
 export interface SpinSaga {
   sagaId: string;
@@ -28,6 +29,7 @@ export interface SpinSaga {
     multiplier?: number;
     freeSpinsAwarded?: number;
     isFreeSpinMode?: boolean;
+    jackpot?: { tier: string | null; winAmount: number; triggered: boolean };
   };
   error?: string;
   createdAt: number;
@@ -66,6 +68,14 @@ export async function executeSpinSaga(params: {
     });
     if (!deductRes.data.success) throw new Error("Wallet deduction failed");
 
+    // Contribute to jackpot pools now that the bet is confirmed taken.
+    // Non-critical: if jackpot-service is briefly unavailable, do not fail the whole spin.
+    try {
+      await axios.post(`${JACKPOT_URL}/jackpots/contribute`, { betAmount: params.betAmount });
+    } catch (jpErr) {
+      console.error("Jackpot contribution failed (non-fatal):", (jpErr as any).message);
+    }
+
     saga.status = "spin_generated";
     await logSaga(saga);
     await ensureSeed(params.playerId);
@@ -80,16 +90,28 @@ export async function executeSpinSaga(params: {
     const winAmount = winRes.data.winAmount;
     const fullResult = winRes.data.result || {};
 
-    if (winAmount > 0) {
+    // Check for a jackpot trigger on this spin (independent of regular symbol wins).
+    let jackpotResult: { tier: string | null; winAmount: number; triggered: boolean } = { tier: null, winAmount: 0, triggered: false };
+    try {
+      const jpRes = await axios.post(`${JACKPOT_URL}/jackpots/check`, {
+        playerId: params.playerId, betAmount: params.betAmount, clientSeed: params.clientSeed, nonce,
+      });
+      jackpotResult = jpRes.data;
+    } catch (jpErr) {
+      console.error("Jackpot check failed (non-fatal):", (jpErr as any).message);
+    }
+
+    const totalCredit = winAmount + (jackpotResult.triggered ? jackpotResult.winAmount : 0);
+    if (totalCredit > 0) {
       await axios.post(`${WALLET_URL}/api/wallet/service/win`, {
-        userId: params.playerId, amount: winAmount, reference: sagaId,
+        userId: params.playerId, amount: totalCredit, reference: sagaId,
       });
     }
 
     await axios.patch(`${SESSION_URL}/session/${params.sessionId}`, { status: "completed", nonce });
 
     saga.status = "completed";
-    saga.result = { stops, winAmount, nonce, ...fullResult };
+    saga.result = { stops, winAmount, nonce, ...fullResult, jackpot: jackpotResult };
     await logSaga(saga);
     await axios.post(`${SESSION_URL}/session/${params.sessionId}/unlock`);
     return saga;
