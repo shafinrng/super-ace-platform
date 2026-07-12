@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useGameStore } from "@/store/gameStore";
-import { login, getBalance, createGameSession, spinSaga } from "@/lib/api";
+import { login, getBalance, createGameSession, spinSaga, getJackpots } from "@/lib/api";
 import { WinCelebration } from "@/components/WinCelebration";
 
 const SYMBOL_IMAGES: Record<string,string> = {
@@ -49,10 +49,17 @@ function MultiplierBar({current}:{current:number}) {
   );
 }
 
+// jackpots shape: { grand, major, minor, mini } as plain numbers from real pool state
 function JackpotBar({jackpots}:{jackpots:any}) {
+  const tiers = [
+    ["GRAND", jackpots?.grand ?? 0, "#d4af37"],
+    ["MAJOR", jackpots?.major ?? 0, "#c0c0c0"],
+    ["MINOR", jackpots?.minor ?? 0, "#cd7f32"],
+    ["MINI",  jackpots?.mini  ?? 0, "#4fc3f7"],
+  ];
   return (
     <div style={{ display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"3px" }}>
-      {[["GRAND",jackpots.grand,"#d4af37"],["MAJOR",5000,"#c0c0c0"],["MINOR",500,"#cd7f32"],["MINI",50,"#4fc3f7"]].map(([n,v,c]:any)=>(
+      {tiers.map(([n,v,c]:any)=>(
         <div key={n} style={{ textAlign:"center",padding:"3px 2px",
           background:"linear-gradient(180deg,#2a1510,#1a0a06)",
           border:`1px solid ${c}`,borderRadius:"5px",overflow:"hidden",position:"relative" }}>
@@ -60,7 +67,7 @@ function JackpotBar({jackpots}:{jackpots:any}) {
             background:"linear-gradient(90deg,transparent,rgba(255,241,168,0.15),transparent)",
             animation:"shimmer 3s infinite" }} />
           <div style={{ fontSize:"8px",fontWeight:700,color:c,letterSpacing:"0.06em" }}>{n}</div>
-          <div style={{ fontSize:"12px",fontWeight:700,color:"#ffdad4",fontFamily:"serif" }}>{Number(v).toFixed(0)}</div>
+          <div style={{ fontSize:"12px",fontWeight:700,color:"#ffdad4",fontFamily:"serif" }}>{Number(v).toFixed(2)}</div>
         </div>
       ))}
     </div>
@@ -93,6 +100,26 @@ export default function GamePage() {
   const userIdRef = useRef(userId);
   useEffect(()=>{ tokenRef.current=token; },[token]);
   useEffect(()=>{ userIdRef.current=userId; },[userId]);
+
+  // Poll real jackpot pools from jackpot-service every 5s, plus once immediately.
+  useEffect(()=>{
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const res = await getJackpots();
+        if (cancelled) return;
+        setJackpots({
+          grand: res.data.grand?.value ?? 0,
+          major: res.data.major?.value ?? 0,
+          minor: res.data.minor?.value ?? 0,
+          mini:  res.data.mini?.value  ?? 0,
+        });
+      } catch (e) { /* jackpot-service unavailable; keep last known values */ }
+    };
+    poll();
+    const interval = setInterval(poll, 5000);
+    return () => { cancelled = true; clearInterval(interval); };
+  },[]);
 
   useEffect(()=>{
     if(!userId) return;
@@ -150,17 +177,20 @@ export default function GamePage() {
       result.wins.forEach((w:any)=>w.positions.forEach(([reel,row]:number[])=>winPos.push(`${reel}-${row}`)));
       result.cascades.forEach((c:any)=>c.wins.forEach((w:any)=>w.positions.forEach(([reel,row]:number[])=>winPos.push(`${reel}-${row}`))));
       setWinPositions(winPos);
-      if(result.totalWin>0) {
-        setBalance((b:number)=>Number((b+result.totalWin).toFixed(8)));
-        setLastWin(result.totalWin);
+      const jackpotWin = result.jackpot?.triggered ? result.jackpot.winAmount : 0;
+      const displayWin = result.totalWin + jackpotWin;
+      if(displayWin>0) {
+        setBalance((b:number)=>Number((b+displayWin).toFixed(8)));
+        setLastWin(displayWin);
         await new Promise(r=>setTimeout(r,turbo?150:500));
         if(!winShownRef.current) {
           winShownRef.current=true;
-          setWinAmount(result.totalWin);
+          setWinAmount(displayWin);
           setShowWin(true);
         }
       }
       if(result.freeSpinsAwarded>0) setFreeSpinMode(true,result.freeSpinsAwarded);
+      if(jackpotWin>0) setMessage(`JACKPOT! ${result.jackpot.tier?.toUpperCase()} won!`);
     } catch (err:any) { setMessage(err.message || "Spin error"); }
     finally { setSpinning(false); }
   },[]);
@@ -287,6 +317,8 @@ export default function GamePage() {
             </div>
           ):isFreeSpinMode?(
             <span style={{ color:"#a855f7",fontWeight:700,fontSize:"12px" }}>FREE SPINS: {freeSpinsLeft}</span>
+          ):message?(
+            <span style={{ color:"#fbbf24",fontWeight:700,fontSize:"11px" }}>{message}</span>
           ):null}
         </div>
 

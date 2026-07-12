@@ -45,3 +45,7 @@ export const spinSaga = (playerId: string, sessionId: string, betAmount: number,
     clientSeed,
     reelLengths: [20, 20, 20, 20, 20],
   });
+
+const jackpotApi = axios.create({ baseURL: process.env.NEXT_PUBLIC_JACKPOT_URL || "http://localhost:3011" });
+
+export const getJackpots = () => jackpotApi.get("/jackpots");
