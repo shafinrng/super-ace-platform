@@ -7,77 +7,122 @@ services:
   auth-service:
     volumes:
       - ./services/auth-service/src:/app/src
-    command: npx ts-node-dev --respawn --transpile-only src/index.ts
+    command: npx ts-node-dev --respawn --transpile-only --poll src/index.ts
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - CHOKIDAR_INTERVAL=1000
 
   game-engine:
     volumes:
       - ./services/game-engine/src:/app/src
-    command: npx ts-node-dev --respawn --transpile-only src/index.ts
+    command: npx ts-node-dev --respawn --transpile-only --poll src/index.ts
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - CHOKIDAR_INTERVAL=1000
 
   wallet-service:
     volumes:
       - ./services/wallet-service/src:/app/src
-    command: npx ts-node-dev --respawn --transpile-only src/index.ts
+    command: npx ts-node-dev --respawn --transpile-only --poll src/index.ts
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - CHOKIDAR_INTERVAL=1000
 
   payment-service:
     volumes:
       - ./services/payment-service/src:/app/src
-    command: npx ts-node-dev --respawn --transpile-only src/index.ts
+    command: npx ts-node-dev --respawn --transpile-only --poll src/index.ts
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - CHOKIDAR_INTERVAL=1000
 
   websocket-service:
     volumes:
       - ./services/websocket-service/src:/app/src
-    command: npx ts-node-dev --respawn --transpile-only src/index.ts
+    command: npx ts-node-dev --respawn --transpile-only --poll src/index.ts
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - CHOKIDAR_INTERVAL=1000
 
   admin-service:
     volumes:
       - ./services/admin-service/src:/app/src
-    command: npx ts-node-dev --respawn --transpile-only src/index.ts
+    command: npx ts-node-dev --respawn --transpile-only --poll src/index.ts
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - CHOKIDAR_INTERVAL=1000
 
   session-service:
     volumes:
       - ./services/session-service/src:/app/src
-    command: npx ts-node-dev --respawn --transpile-only src/index.ts
+    command: npx ts-node-dev --respawn --transpile-only --poll src/index.ts
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - CHOKIDAR_INTERVAL=1000
 
   saga-service:
     volumes:
       - ./services/saga-service/src:/app/src
-    command: npx ts-node-dev --respawn --transpile-only src/index.ts
+    command: npx ts-node-dev --respawn --transpile-only --poll src/index.ts
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - CHOKIDAR_INTERVAL=1000
 
   rng-service:
     volumes:
       - ./services/rng-service/src:/app/src
-    command: npx ts-node-dev --respawn --transpile-only src/index.ts
+    command: npx ts-node-dev --respawn --transpile-only --poll src/index.ts
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - CHOKIDAR_INTERVAL=1000
 
   jackpot-service:
     volumes:
       - ./services/jackpot-service/src:/app/src
-    command: npx ts-node-dev --respawn --transpile-only src/index.ts
+    command: npx ts-node-dev --respawn --transpile-only --poll src/index.ts
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - CHOKIDAR_INTERVAL=1000
 
   buybonus-service:
     volumes:
       - ./services/buybonus-service/src:/app/src
-    command: npx ts-node-dev --respawn --transpile-only src/index.ts
+    command: npx ts-node-dev --respawn --transpile-only --poll src/index.ts
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - CHOKIDAR_INTERVAL=1000
 
   notification-service:
     volumes:
       - ./services/notification-service/src:/app/src
-    command: npx ts-node-dev --respawn --transpile-only src/index.ts
+    command: npx ts-node-dev --respawn --transpile-only --poll src/index.ts
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - CHOKIDAR_INTERVAL=1000
 
   kyc-service:
     volumes:
       - ./services/kyc-service/src:/app/src
-    command: npx ts-node-dev --respawn --transpile-only src/index.ts
+    command: npx ts-node-dev --respawn --transpile-only --poll src/index.ts
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - CHOKIDAR_INTERVAL=1000
 
   audit-service:
     volumes:
       - ./services/audit-service/src:/app/src
-    command: npx ts-node-dev --respawn --transpile-only src/index.ts
+    command: npx ts-node-dev --respawn --transpile-only --poll src/index.ts
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - CHOKIDAR_INTERVAL=1000
 
   responsible-gaming-service:
     volumes:
       - ./services/responsible-gaming-service/src:/app/src
-    command: npx ts-node-dev --respawn --transpile-only src/index.ts
+    command: npx ts-node-dev --respawn --transpile-only --poll src/index.ts
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - CHOKIDAR_INTERVAL=1000
 
   frontend:
     volumes:
