@@ -1,0 +1,93 @@
+# docker-compose.override.yml
+# Auto-loaded by "docker compose up" alongside docker-compose.yml.
+# Adds live bind-mounts + ts-node-dev for fast local iteration.
+# docker-compose.yml itself stays production-clean for VPS deployment.
+
+services:
+  auth-service:
+    volumes:
+      - ./services/auth-service/src:/app/src
+    command: npx ts-node-dev --respawn --transpile-only src/index.ts
+
+  game-engine:
+    volumes:
+      - ./services/game-engine/src:/app/src
+    command: npx ts-node-dev --respawn --transpile-only src/index.ts
+
+  wallet-service:
+    volumes:
+      - ./services/wallet-service/src:/app/src
+    command: npx ts-node-dev --respawn --transpile-only src/index.ts
+
+  payment-service:
+    volumes:
+      - ./services/payment-service/src:/app/src
+    command: npx ts-node-dev --respawn --transpile-only src/index.ts
+
+  websocket-service:
+    volumes:
+      - ./services/websocket-service/src:/app/src
+    command: npx ts-node-dev --respawn --transpile-only src/index.ts
+
+  admin-service:
+    volumes:
+      - ./services/admin-service/src:/app/src
+    command: npx ts-node-dev --respawn --transpile-only src/index.ts
+
+  session-service:
+    volumes:
+      - ./services/session-service/src:/app/src
+    command: npx ts-node-dev --respawn --transpile-only src/index.ts
+
+  saga-service:
+    volumes:
+      - ./services/saga-service/src:/app/src
+    command: npx ts-node-dev --respawn --transpile-only src/index.ts
+
+  rng-service:
+    volumes:
+      - ./services/rng-service/src:/app/src
+    command: npx ts-node-dev --respawn --transpile-only src/index.ts
+
+  jackpot-service:
+    volumes:
+      - ./services/jackpot-service/src:/app/src
+    command: npx ts-node-dev --respawn --transpile-only src/index.ts
+
+  buybonus-service:
+    volumes:
+      - ./services/buybonus-service/src:/app/src
+    command: npx ts-node-dev --respawn --transpile-only src/index.ts
+
+  notification-service:
+    volumes:
+      - ./services/notification-service/src:/app/src
+    command: npx ts-node-dev --respawn --transpile-only src/index.ts
+
+  kyc-service:
+    volumes:
+      - ./services/kyc-service/src:/app/src
+    command: npx ts-node-dev --respawn --transpile-only src/index.ts
+
+  audit-service:
+    volumes:
+      - ./services/audit-service/src:/app/src
+    command: npx ts-node-dev --respawn --transpile-only src/index.ts
+
+  responsible-gaming-service:
+    volumes:
+      - ./services/responsible-gaming-service/src:/app/src
+    command: npx ts-node-dev --respawn --transpile-only src/index.ts
+
+  frontend:
+    volumes:
+      - ./frontend/app:/app/app
+      - ./frontend/lib:/app/lib
+      - ./frontend/store:/app/store
+      - ./frontend/components:/app/components
+    command: npm run dev
+
+  admin-panel:
+    volumes:
+      - ./admin-panel/src:/app/src
+    command: npm run dev
