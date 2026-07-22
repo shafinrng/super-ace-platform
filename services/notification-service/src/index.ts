@@ -20,10 +20,10 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json());
 
-const limiter = rateLimit({ windowMs: 60 * 1000, max: 100 });
+const limiter = rateLimit({ windowMs: 60 * 1000, max: 600});
 app.use(limiter);
 
-// ── WebSocket Connections ──
+// Ã¢â€â‚¬Ã¢â€â‚¬ WebSocket Connections Ã¢â€â‚¬Ã¢â€â‚¬
 const clients = new Map<string, WebSocket>(); // userId -> ws
 const adminClients = new Set<WebSocket>();
 
@@ -65,7 +65,7 @@ wss.on("connection", (ws, req) => {
   });
 });
 
-// ── Redis Subscribers for cross-service broadcasting ──
+// Ã¢â€â‚¬Ã¢â€â‚¬ Redis Subscribers for cross-service broadcasting Ã¢â€â‚¬Ã¢â€â‚¬
 const sub = new Redis({ host: process.env.REDIS_HOST || "localhost", port: 6379 });
 
 sub.on("message", (channel, message) => {
@@ -87,7 +87,7 @@ sub.on("message", (channel, message) => {
 sub.subscribe("admin:alerts", "admin:jackpot_wins");
 sub.psubscribe("user:*:notifications");
 
-// ── HTTP Routes ──
+// Ã¢â€â‚¬Ã¢â€â‚¬ HTTP Routes Ã¢â€â‚¬Ã¢â€â‚¬
 
 // Toast (Deposit, Withdraw, General)
 app.post("/notify/toast", async (req, res) => {
@@ -150,7 +150,7 @@ app.post("/notify/schedule", async (req, res) => {
   } catch (err) { console.error(err); res.status(500).json({ error: "Schedule failed" }); }
 });
 
-// ── Inbox / History ──
+// Ã¢â€â‚¬Ã¢â€â‚¬ Inbox / History Ã¢â€â‚¬Ã¢â€â‚¬
 app.get("/notifications/:userId", async (req, res) => {
   try {
     const limit = parseInt(req.query.limit as string) || 50;

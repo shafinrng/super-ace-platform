@@ -10,7 +10,7 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json());
 
-const limiter = rateLimit({ windowMs: 60 * 1000, max: 60 });
+const limiter = rateLimit({ windowMs: 60 * 1000, max: 1000, keyGenerator: (req) => req.body?.playerId || req.ip});
 app.use(limiter);
 
 app.post("/saga/spin", async (req, res) => {

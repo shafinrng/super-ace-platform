@@ -1,4 +1,4 @@
-﻿import express from 'express';
+import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
@@ -16,7 +16,7 @@ app.use(express.json({ limit: '10kb' }));
 // Rate limiting
 app.use('/api/auth', rateLimit({
   windowMs: 60 * 60 * 1000, // 15 minutes
-  max: 1000,
+  max: 600,
   message: { error: 'Too many requests, please try again later.' }
 }));
 
@@ -32,7 +32,7 @@ app.get('/health', (_, res) => {
 app.use(errorHandler);
 
 app.listen(PORT, () => {
-  console.log(`âœ… Auth Service running on port ${PORT}`);
+  console.log(`ÃƒÂ¢Ã…â€œÃ¢â‚¬Â¦ Auth Service running on port ${PORT}`);
 });
 
 export default app;

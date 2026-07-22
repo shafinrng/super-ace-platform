@@ -16,7 +16,7 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json());
 
-const limiter = rateLimit({ windowMs: 60 * 1000, max: 30 });
+const limiter = rateLimit({ windowMs: 60 * 1000, max: 600});
 app.use(limiter);
 
 const storage = multer.diskStorage({

@@ -33,14 +33,14 @@ router.post("/calculate-win", async (req: Request, res: Response) => {
   }
 });
 
-router.get("/config", (_req: Request, res: Response) => {
+router.get("/config", async (_req: Request, res: Response) => {
   res.json({
     reels: 5,
     rows: 4,
     ways: 1024,
     minBet: 0.1,
     maxBet: 1000,
-    rtp: 97,
+    rtp: await getTargetRtp(),
   });
 });
 

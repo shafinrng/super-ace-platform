@@ -12,10 +12,10 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json());
 
-const limiter = rateLimit({ windowMs: 60 * 1000, max: 100 });
+const limiter = rateLimit({ windowMs: 60 * 1000, max: 600});
 app.use(limiter);
 
-// ── Append Audit Entry (called by other services) ──
+// Ã¢â€â‚¬Ã¢â€â‚¬ Append Audit Entry (called by other services) Ã¢â€â‚¬Ã¢â€â‚¬
 app.post("/audit/append", async (req, res) => {
   try {
     const { eventType, entityType, entityId, actorId, actorType, action, details, beforeState, afterState, ipAddress, userAgent, serviceKey } = req.body;
@@ -37,7 +37,7 @@ app.post("/audit/append", async (req, res) => {
   } catch (err) { console.error(err); res.status(500).json({ error: "Append failed" }); }
 });
 
-// ── Query Audit Log ──
+// Ã¢â€â‚¬Ã¢â€â‚¬ Query Audit Log Ã¢â€â‚¬Ã¢â€â‚¬
 app.get("/audit/query", async (req, res) => {
   try {
     const entries = await getEntries({
@@ -55,7 +55,7 @@ app.get("/audit/query", async (req, res) => {
   } catch (err) { console.error(err); res.status(500).json({ error: "Query failed" }); }
 });
 
-// ── Verify Chain Integrity ──
+// Ã¢â€â‚¬Ã¢â€â‚¬ Verify Chain Integrity Ã¢â€â‚¬Ã¢â€â‚¬
 app.get("/audit/verify", async (_req, res) => {
   try {
     const result = await verifyChain();
@@ -63,7 +63,7 @@ app.get("/audit/verify", async (_req, res) => {
   } catch (err) { console.error(err); res.status(500).json({ error: "Verification failed" }); }
 });
 
-// ── Regulator Export ──
+// Ã¢â€â‚¬Ã¢â€â‚¬ Regulator Export Ã¢â€â‚¬Ã¢â€â‚¬
 app.get("/audit/export", async (req, res) => {
   try {
     const { from, to, format, regulatorKey } = req.query as any;
@@ -84,7 +84,7 @@ app.get("/audit/export", async (req, res) => {
   } catch (err) { console.error(err); res.status(500).json({ error: "Export failed" }); }
 });
 
-// ── Get Entry by Hash ──
+// Ã¢â€â‚¬Ã¢â€â‚¬ Get Entry by Hash Ã¢â€â‚¬Ã¢â€â‚¬
 app.get("/audit/entry/:hash", async (req, res) => {
   try {
     const entry = await getEntryByHash(req.params.hash);
@@ -93,7 +93,7 @@ app.get("/audit/entry/:hash", async (req, res) => {
   } catch (err) { console.error(err); res.status(500).json({ error: "Failed" }); }
 });
 
-// ── Health ──
+// Ã¢â€â‚¬Ã¢â€â‚¬ Health Ã¢â€â‚¬Ã¢â€â‚¬
 app.get("/health", (_req, res) => res.json({ status: "ok", service: "audit-service" }));
 
 initDB().then(() => {

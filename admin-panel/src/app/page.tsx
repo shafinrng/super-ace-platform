@@ -23,7 +23,7 @@ export default function DashboardPage() {
 
     const interval = setInterval(() => {
       checkRtpAlert().then(setAlertData);
-    }, 10000);
+    }, 60000);
 
     const ws = createWebSocket((msg) => {
       if (msg.type === "ONLINE_COUNT") {

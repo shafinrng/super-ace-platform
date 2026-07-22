@@ -21,3 +21,7 @@ build/
 # OS
 .DS_Store
 Thumbs.db
+
+# Local backups (not for version control)
+*.rdb
+*-backup.ps1

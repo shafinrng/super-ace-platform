@@ -7,7 +7,7 @@ import adminRoutes from "./routes/admin.routes";
 const REQUIRED_ENVS = ["DATABASE_URL", "JWT_SECRET"];
 const missing = REQUIRED_ENVS.filter((k) => !process.env[k]);
 if (missing.length > 0) {
-  console.error(`❌ Missing required env vars: ${missing.join(", ")}`);
+  console.error(`Ã¢ÂÅ’ Missing required env vars: ${missing.join(", ")}`);
   process.exit(1);
 }
 
@@ -20,7 +20,7 @@ app.use(express.json());
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: 600,
   message: { error: "Too many requests, please try again later." },
   standardHeaders: true,
   legacyHeaders: false,
@@ -36,5 +36,5 @@ app.use((err: any, _req: any, res: any, _next: any) => {
   res.status(err.statusCode || 500).json({ error: err.message || "Internal Server Error" });
 });
 
-app.listen(PORT, () => console.log(`✅ Admin Service running on port ${PORT}`));
+app.listen(PORT, () => console.log(`Ã¢Å“â€¦ Admin Service running on port ${PORT}`));
 export default app;

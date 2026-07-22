@@ -12,7 +12,7 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json());
 
-const limiter = rateLimit({ windowMs: 60 * 1000, max: 100 });
+const limiter = rateLimit({ windowMs: 60 * 1000, max: 2000, keyGenerator: (req) => req.body?.playerId || req.params?.sessionId || req.ip});
 app.use(limiter);
 
 app.post("/session", async (req, res) => {

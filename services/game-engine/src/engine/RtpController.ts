@@ -34,26 +34,45 @@ export async function deletePlayerRtp(userId: string): Promise<void> {
 
 export async function getAllPlayerRtps(): Promise<{userId: string; rtp: number}[]> {
   const keys = await redis.keys("rtp:player:*");
-  if (keys.length === 0) return [];
-  const values = await redis.mget(...keys);
-  return keys.map((key, i) => ({
+  const overrideKeys = keys.filter(k => !k.includes(":bets") && !k.includes(":payouts"));
+  if (overrideKeys.length === 0) return [];
+  const values = await redis.mget(...overrideKeys);
+  return overrideKeys.map((key, i) => ({
     userId: key.replace("rtp:player:", ""),
     rtp: parseFloat(values[i] || "0"),
   }));
 }
 
-export async function recordBet(amount: number): Promise<void> {
-  await redis.incrbyfloat(RTP_TOTAL_BETS_KEY, amount);
+export async function recordBet(amount: number, userId?: string): Promise<void> {
+  if (userId) {
+    const pipeline = redis.pipeline();
+    pipeline.incrbyfloat(`rtp:player:${userId}:bets`, amount);
+    pipeline.incrbyfloat(RTP_TOTAL_BETS_KEY, amount);
+    await pipeline.exec();
+  } else {
+    await redis.incrbyfloat(RTP_TOTAL_BETS_KEY, amount);
+  }
 }
 
-export async function recordPayout(amount: number): Promise<void> {
-  if (amount > 0) await redis.incrbyfloat(RTP_TOTAL_PAYOUTS_KEY, amount);
+export async function recordPayout(amount: number, userId?: string): Promise<void> {
+  if (amount > 0) {
+    if (userId) {
+      const pipeline = redis.pipeline();
+      pipeline.incrbyfloat(`rtp:player:${userId}:payouts`, amount);
+      pipeline.incrbyfloat(RTP_TOTAL_PAYOUTS_KEY, amount);
+      await pipeline.exec();
+    } else {
+      await redis.incrbyfloat(RTP_TOTAL_PAYOUTS_KEY, amount);
+    }
+  }
 }
 
-export async function getActualRtp(): Promise<{ actualRtp: number; totalBets: number; totalPayouts: number }> {
+export async function getActualRtp(userId?: string): Promise<{ actualRtp: number; totalBets: number; totalPayouts: number }> {
+  const betsKey = userId ? `rtp:player:${userId}:bets` : RTP_TOTAL_BETS_KEY;
+  const payoutsKey = userId ? `rtp:player:${userId}:payouts` : RTP_TOTAL_PAYOUTS_KEY;
   const [betsStr, payoutsStr] = await Promise.all([
-    redis.get(RTP_TOTAL_BETS_KEY),
-    redis.get(RTP_TOTAL_PAYOUTS_KEY),
+    redis.get(betsKey),
+    redis.get(payoutsKey),
   ]);
   const totalBets = parseFloat(betsStr || "0");
   const totalPayouts = parseFloat(payoutsStr || "0");
@@ -61,8 +80,12 @@ export async function getActualRtp(): Promise<{ actualRtp: number; totalBets: nu
   return { actualRtp, totalBets, totalPayouts };
 }
 
-export async function resetRtpStats(): Promise<void> {
-  await redis.del(RTP_TOTAL_BETS_KEY, RTP_TOTAL_PAYOUTS_KEY);
+export async function resetRtpStats(userId?: string): Promise<void> {
+  if (userId) {
+    await redis.del(`rtp:player:${userId}:bets`, `rtp:player:${userId}:payouts`);
+  } else {
+    await redis.del(RTP_TOTAL_BETS_KEY, RTP_TOTAL_PAYOUTS_KEY);
+  }
 }
 
 export async function getRtpBias(userId?: string): Promise<number> {
@@ -73,9 +96,9 @@ export async function getRtpBias(userId?: string): Promise<number> {
   } else {
     target = await getTargetRtp();
   }
-  const { actualRtp, totalBets } = await getActualRtp();
+  const { actualRtp, totalBets } = await getActualRtp(userId);
   if (totalBets < 100) return 1.0;
   const diff = target - actualRtp;
-  const bias = 1.0 + Math.max(-0.5, Math.min(0.5, diff / 40));
+  const bias = 1.0 + Math.max(-0.8, Math.min(0.8, diff / 80));
   return bias;
 }

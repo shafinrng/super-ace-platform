@@ -9,10 +9,10 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json());
 
-const limiter = rateLimit({ windowMs: 60 * 1000, max: 30 });
+const limiter = rateLimit({ windowMs: 60 * 1000, max: 600});
 app.use(limiter);
 
-// ── Get Buy Bonus Cost ──
+// Ã¢â€â‚¬Ã¢â€â‚¬ Get Buy Bonus Cost Ã¢â€â‚¬Ã¢â€â‚¬
 app.post("/buybonus/cost", async (req, res) => {
   try {
     const { baseBet } = req.body;
@@ -33,7 +33,7 @@ app.post("/buybonus/cost", async (req, res) => {
   }
 });
 
-// ── Execute Buy Bonus ──
+// Ã¢â€â‚¬Ã¢â€â‚¬ Execute Buy Bonus Ã¢â€â‚¬Ã¢â€â‚¬
 app.post("/buybonus/purchase", async (req, res) => {
   try {
     const { playerId, baseBet, currency, clientSeed } = req.body;
@@ -54,7 +54,7 @@ app.post("/buybonus/purchase", async (req, res) => {
   }
 });
 
-// ── Health ──
+// Ã¢â€â‚¬Ã¢â€â‚¬ Health Ã¢â€â‚¬Ã¢â€â‚¬
 app.get("/health", (_req, res) => res.json({ status: "ok", service: "buybonus-service" }));
 
 const PORT = process.env.PORT || 3012;

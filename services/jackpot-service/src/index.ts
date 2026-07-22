@@ -16,13 +16,13 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json());
 
-const limiter = rateLimit({ windowMs: 60 * 1000, max: 100 });
+const limiter = rateLimit({ windowMs: 60 * 1000, max: 600});
 app.use(limiter);
 
 // Initialize pools on startup
 initPools().then(() => console.log("Jackpot pools initialized"));
 
-// ── Get Current Pool Values ──
+// ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Get Current Pool Values ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
 app.get("/jackpots", async (_req, res) => {
   try {
     const pools = await getPoolValues();
@@ -38,7 +38,7 @@ app.get("/jackpots", async (_req, res) => {
   }
 });
 
-// ── Contribute to Pools (called by Saga after bet) ──
+// ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Contribute to Pools (called by Saga after bet) ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
 app.post("/jackpots/contribute", async (req, res) => {
   try {
     const { betAmount } = req.body;
@@ -54,7 +54,7 @@ app.post("/jackpots/contribute", async (req, res) => {
   }
 });
 
-// ── Check Jackpot Win (called by Saga after spin) ──
+// ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Check Jackpot Win (called by Saga after spin) ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
 app.post("/jackpots/check", async (req, res) => {
   try {
     const { playerId, betAmount, clientSeed, nonce } = req.body;
@@ -70,7 +70,7 @@ app.post("/jackpots/check", async (req, res) => {
   }
 });
 
-// ── Admin: Set Pool Value ──
+// ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Admin: Set Pool Value ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
 app.post("/jackpots/admin/set", async (req, res) => {
   try {
     const { tier, value, adminKey } = req.body;
@@ -90,7 +90,7 @@ app.post("/jackpots/admin/set", async (req, res) => {
   }
 });
 
-// ── Health ──
+// ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Health ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
 app.get("/health", (_req, res) => res.json({ status: "ok", service: "jackpot-service" }));
 
 const PORT = process.env.PORT || 3011;

@@ -15,10 +15,10 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json());
 
-const limiter = rateLimit({ windowMs: 60 * 1000, max: 60 });
+const limiter = rateLimit({ windowMs: 60 * 1000, max: 600});
 app.use(limiter);
 
-// ── Self Exclusion ──
+// Ã¢â€â‚¬Ã¢â€â‚¬ Self Exclusion Ã¢â€â‚¬Ã¢â€â‚¬
 app.post("/rg/self-exclude", async (req, res) => {
   try {
     const { userId, type, durationHours, reason } = req.body;
@@ -46,7 +46,7 @@ app.post("/rg/lift-exclusion", async (req, res) => {
   } catch (err) { console.error(err); res.status(500).json({ error: "Failed" }); }
 });
 
-// ── Deposit Limits ──
+// Ã¢â€â‚¬Ã¢â€â‚¬ Deposit Limits Ã¢â€â‚¬Ã¢â€â‚¬
 app.post("/rg/deposit-limits", async (req, res) => {
   try {
     const { userId, daily, weekly, monthly } = req.body;
@@ -74,7 +74,7 @@ app.post("/rg/record-deposit", async (req, res) => {
   } catch (err) { console.error(err); res.status(500).json({ error: "Failed" }); }
 });
 
-// ── Loss Limits ──
+// Ã¢â€â‚¬Ã¢â€â‚¬ Loss Limits Ã¢â€â‚¬Ã¢â€â‚¬
 app.post("/rg/loss-limits", async (req, res) => {
   try {
     const { userId, dailyLoss, sessionLoss } = req.body;
@@ -102,7 +102,7 @@ app.post("/rg/record-loss", async (req, res) => {
   } catch (err) { console.error(err); res.status(500).json({ error: "Failed" }); }
 });
 
-// ── Reality Checks ──
+// Ã¢â€â‚¬Ã¢â€â‚¬ Reality Checks Ã¢â€â‚¬Ã¢â€â‚¬
 app.post("/rg/reality-check", async (req, res) => {
   try {
     const { userId, intervalMinutes, enabled } = req.body;
@@ -119,7 +119,7 @@ app.get("/rg/reality-check/:userId", async (req, res) => {
   } catch (err) { console.error(err); res.status(500).json({ error: "Failed" }); }
 });
 
-// ── Full Health Check (called before bet/deposit) ──
+// Ã¢â€â‚¬Ã¢â€â‚¬ Full Health Check (called before bet/deposit) Ã¢â€â‚¬Ã¢â€â‚¬
 app.post("/rg/health-check", async (req, res) => {
   try {
     const { userId, amount, type } = req.body;
@@ -131,7 +131,7 @@ app.post("/rg/health-check", async (req, res) => {
   } catch (err) { console.error(err); res.status(500).json({ error: "Failed" }); }
 });
 
-// ── Health ──
+// Ã¢â€â‚¬Ã¢â€â‚¬ Health Ã¢â€â‚¬Ã¢â€â‚¬
 app.get("/health", (_req, res) => res.json({ status: "ok", service: "responsible-gaming-service" }));
 
 initDB().then(() => {
