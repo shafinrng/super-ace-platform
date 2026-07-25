@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useGameStore } from "@/store/gameStore";
 import { login, getBalance, createGameSession, spinSaga, getJackpots } from "@/lib/api";
@@ -53,7 +53,7 @@ function SymbolCard({ symbol, isWinning = false, isNew = false, delay = 0, idleD
       <img
         src={SYMBOL_IMAGES[symbol] || SYMBOL_IMAGES.A}
         alt={symbol}
-        style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+        style={{ width: "92%", height: "92%", objectFit: "contain", display: "block", margin: "auto" }}
       />
     </div>
   );
@@ -137,7 +137,7 @@ function JackpotDrawer({ jackpots, isOpen, onClose }: { jackpots: any; isOpen: b
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #d4af37", paddingBottom: "8px" }}>
           <span style={{ color: "#fff1a8", fontWeight: 900, fontSize: "14px", letterSpacing: "0.05em" }}>JACKPOTS</span>
-          <button onClick={onClose} style={{ background: "none", border: "none", color: "#d4af37", fontSize: "18px", cursor: "pointer" }}>✕</button>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "#d4af37", fontSize: "18px", cursor: "pointer" }}>ÃƒÂ¢Ã…â€œÃ¢â‚¬Â¢</button>
         </div>
         {tiers.map(([n, v, c]: any) => (
           <div
@@ -152,7 +152,7 @@ function JackpotDrawer({ jackpots, isOpen, onClose }: { jackpots: any; isOpen: b
           >
             <div style={{ fontSize: "10px", fontWeight: 800, color: c, letterSpacing: "0.08em" }}>{n}</div>
             <div style={{ fontSize: "16px", fontWeight: 900, color: "#ffffff", fontFamily: "monospace", marginTop: "2px" }}>
-              ৳{Number(v).toFixed(2)}
+              ${Number(v).toFixed(2)}
             </div>
           </div>
         ))}
@@ -337,8 +337,10 @@ export default function GamePage() {
           fontFamily: "sans-serif",
           overflow: "hidden",
           position: "relative",
-          backgroundImage:
-            "radial-gradient(circle at 50% 20%, rgba(127,29,29,0.55), transparent 60%), radial-gradient(circle at 50% 100%, rgba(59,7,100,0.55), transparent 60%), linear-gradient(180deg, #1a0a06 0%, #0d0503 60%, #000 100%)",
+          backgroundImage: "url(/assets/symbols/screen.png)",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
         }}
       >
         {/* animated background glow layer */}
@@ -377,7 +379,7 @@ export default function GamePage() {
                       cursor: "pointer",
                     }}
                   >
-                    ৳{b}
+                    ${b}
                   </button>
                 ))}
               </div>
@@ -405,7 +407,7 @@ export default function GamePage() {
         )}
 
         {/* Top bar with safe-area padding */}
-        <div style={{ padding: "calc(8px + env(safe-area-inset-top)) 10px 8px", display: "flex", justifyContent: "space-between", alignItems: "center", zIndex: 10, position: "relative" }}>
+        <div style={{ padding: "calc(20px + env(safe-area-inset-top)) 12px 12px", display: "flex", justifyContent: "space-between", alignItems: "center", zIndex: 10, position: "relative" }}>
           <button
             onClick={() => setShowJackpotDrawer(true)}
             style={{
@@ -423,10 +425,10 @@ export default function GamePage() {
               gap: "4px",
             }}
           >
-            🎒 JACKPOTS
+            ÃƒÂ°Ã…Â¸Ã…Â½Ã¢â‚¬â„¢ JACKPOTS
           </button>
           <MultiplierBar current={multiplier} />
-          <div style={{ color: "rgba(255,255,255,0.5)", fontSize: "10px" }}>{onlinePlayers} 🟢</div>
+          <div style={{ color: "rgba(255,255,255,0.5)", fontSize: "10px" }}>{onlinePlayers} ÃƒÂ°Ã…Â¸Ã…Â¸Ã‚Â¢</div>
         </div>
 
         {/* Card grid area with top/bottom breathing room */}
@@ -463,7 +465,7 @@ export default function GamePage() {
         <div style={{ height: "24px", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", zIndex: 5 }}>
           {lastWin > 0 ? (
             <div style={{ color: "#fef08a", fontWeight: 900, fontSize: "14px", textShadow: "0 0 8px #ca8a04" }}>
-              WIN: ৳{lastWin.toFixed(2)}
+              WIN: ${lastWin.toFixed(2)}
             </div>
           ) : isFreeSpinMode ? (
             <span style={{ color: "#d8b4fe", fontWeight: 800, fontSize: "11px" }}>FREE SPINS: {freeSpinsLeft}</span>
@@ -471,7 +473,7 @@ export default function GamePage() {
         </div>
 
         {/* Bottom bar with safe-area padding */}
-        <div style={{ flexShrink: 0, background: "linear-gradient(180deg, #180505, #000000)", borderTop: "1.5px solid #d4af37", padding: "8px 8px calc(10px + env(safe-area-inset-bottom))", position: "relative", zIndex: 10 }}>
+        <div style={{ flexShrink: 0, background: "linear-gradient(180deg, #180505, #000000)", borderTop: "1.5px solid #d4af37", padding: "10px 10px calc(24px + env(safe-area-inset-bottom))", position: "relative", zIndex: 10 }}>
 
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
             <button
@@ -487,7 +489,7 @@ export default function GamePage() {
                 cursor: "pointer",
               }}
             >
-              ⚡
+              ÃƒÂ¢Ã…Â¡Ã‚Â¡
             </button>
 
             <button onClick={() => changeBet(-1)} style={{ width: "38px", height: "38px", borderRadius: "50%", border: "1px solid rgba(212,175,55,0.4)", background: "rgba(0,0,0,0.6)", color: "#d4af37", fontSize: "16px", fontWeight: 900, cursor: "pointer" }}>
@@ -545,27 +547,27 @@ export default function GamePage() {
                 justifyContent: "center",
               }}
             >
-              {isAuto ? autoSpins : "🔁"}
+              {isAuto ? autoSpins : "ÃƒÂ°Ã…Â¸Ã¢â‚¬ÂÃ‚Â"}
             </button>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "4px" }}>
             <div style={{ background: "rgba(0,0,0,0.7)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: "6px", padding: "4px 2px", textAlign: "center" }}>
               <div style={{ fontSize: "8px", color: "rgba(255,255,255,0.5)" }}>WALLET</div>
-              <div style={{ fontSize: "11px", fontWeight: 800, color: "#4ade80", fontFamily: "monospace" }}>৳{Number(balance).toFixed(2)}</div>
+              <div style={{ fontSize: "11px", fontWeight: 800, color: "#4ade80", fontFamily: "monospace" }}>${Number(balance).toFixed(2)}</div>
             </div>
 
             <div
               onClick={() => setShowBetPanel(true)}
               style={{ background: "rgba(0,0,0,0.7)", border: "1px solid #d4af37", borderRadius: "6px", padding: "4px 2px", textAlign: "center", cursor: "pointer" }}
             >
-              <div style={{ fontSize: "8px", color: "#d4af37" }}>BET ▾</div>
-              <div style={{ fontSize: "11px", fontWeight: 800, color: "#ffffff", fontFamily: "monospace" }}>৳{betAmount.toFixed(2)}</div>
+              <div style={{ fontSize: "8px", color: "#d4af37" }}>BET ÃƒÂ¢Ã¢â‚¬â€œÃ‚Â¾</div>
+              <div style={{ fontSize: "11px", fontWeight: 800, color: "#ffffff", fontFamily: "monospace" }}>${betAmount.toFixed(2)}</div>
             </div>
 
             <div style={{ background: "rgba(0,0,0,0.7)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: "6px", padding: "4px 2px", textAlign: "center" }}>
               <div style={{ fontSize: "8px", color: "rgba(255,255,255,0.5)" }}>WIN</div>
-              <div style={{ fontSize: "11px", fontWeight: 800, color: "#fef08a", fontFamily: "monospace" }}>৳{lastWin.toFixed(2)}</div>
+              <div style={{ fontSize: "11px", fontWeight: 800, color: "#fef08a", fontFamily: "monospace" }}>${lastWin.toFixed(2)}</div>
             </div>
           </div>
         </div>
