@@ -131,6 +131,8 @@ services:
       - ./frontend/store:/app/store
       - ./frontend/components:/app/components
       - ./frontend/public:/app/public
+      - ./frontend/public:/app/public
+      - ./frontend/public:/app/public
     command: npm run dev
 
   admin-panel:

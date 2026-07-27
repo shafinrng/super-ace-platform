@@ -4,6 +4,9 @@ import { useGameStore } from "@/store/gameStore";
 import { login, getBalance, createGameSession, spinSaga, getJackpots } from "@/lib/api";
 import { WinCelebration } from "@/components/WinCelebration";
 
+/* ==========================================
+   CONFIG & ASSETS
+   ========================================== */
 const SYMBOL_IMAGES: Record<string, string> = {
   A: "/assets/symbols/symbol-a.webp",
   K: "/assets/symbols/symbol-k.webp",
@@ -21,14 +24,36 @@ const SYMBOL_IMAGES: Record<string, string> = {
 const MULTIPLIERS = [1, 2, 3, 5];
 const BET_OPTIONS = [0.02, 0.05, 0.10, 0.20, 0.50, 1, 2, 5, 10, 20, 50, 100, 200, 500];
 const AUTO_OPTIONS = [10, 25, 50, 100];
-const BTN_SIZE = 40;
+
+const SMALL_BTN = 42;
+const SPIN_BTN = 70;
+
+/* ==========================================
+   SVG ICONS (No Text)
+   ========================================== */
+const IconLightning = ({ s = 22, c = "#d4af37" }) => (
+  <svg width={s} height={s} viewBox="0 0 24 24" fill={c}><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+);
+const IconMinus = ({ s = 22, c = "#d4af37" }) => (
+  <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="3" strokeLinecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+);
+const IconPlus = ({ s = 22, c = "#d4af37" }) => (
+  <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+);
+const IconAuto = ({ s = 22, c = "#d4af37" }) => (
+  <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/></svg>
+);
+
+/* ==========================================
+   COMPONENTS
+   ========================================== */
 
 function SymbolCard({ symbol, isWinning = false, isNew = false, delay = 0, idleDelay = 0 }: { symbol: string; isWinning?: boolean; isNew?: boolean; delay?: number; idleDelay?: number }) {
   const [vis, setVis] = useState(!isNew);
   useEffect(() => {
     if (isNew) {
       setVis(false);
-      const t = setTimeout(() => setVis(true), delay + 30);
+      const t = setTimeout(() => setVis(true), delay + 20);
       return () => clearTimeout(t);
     }
   }, [isNew, delay]);
@@ -38,20 +63,16 @@ function SymbolCard({ symbol, isWinning = false, isNew = false, delay = 0, idleD
       style={{
         width: "100%",
         height: "100%",
-        borderRadius: "3px",
+        borderRadius: "4px",
         overflow: "hidden",
         position: "relative",
-        border: isWinning ? "2px solid #fff1a8" : "1px solid rgba(212,175,55,0.35)",
-        transform: vis
-          ? isWinning ? "translateY(0) scale(1.04)" : "translateY(0) scale(1)"
-          : "translateY(-90px) scale(0.85)",
+        background: "#ffffff",
+        border: isWinning ? "2px solid #ffd700" : "1px solid rgba(180,140,50,0.4)",
+        transform: vis ? (isWinning ? "translateY(0) scale(1.05)" : "translateY(0) scale(1)") : "translateY(-100px) scale(0.85)",
         opacity: vis ? 1 : 0,
         transition: `transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) ${delay}ms, opacity 0.2s ease ${delay}ms`,
-        boxShadow: isWinning ? "0 0 14px rgba(255,241,168,0.9)" : "0 1px 3px rgba(0,0,0,0.5)",
-        animation: isWinning
-          ? "cardShake 0.35s ease-in-out 3, cardGlow 0.6s ease infinite alternate"
-          : `idlePulse 3.5s ease-in-out ${idleDelay}ms infinite`,
-        background: "#0d0805",
+        boxShadow: isWinning ? "0 0 16px rgba(255,215,0,0.9), inset 0 0 10px rgba(255,215,0,0.4)" : "none",
+        animation: isWinning ? "cardShake 0.4s ease-in-out 3, cardGlow 0.7s ease infinite alternate" : `idlePulse 4s ease-in-out ${idleDelay}ms infinite`,
       }}
     >
       <img
@@ -61,11 +82,12 @@ function SymbolCard({ symbol, isWinning = false, isNew = false, delay = 0, idleD
           position: "absolute",
           top: "50%",
           left: "50%",
-          width: "128%",
-          height: "128%",
+          width: "135%", 
+          height: "135%",
           transform: "translate(-50%, -50%)",
           objectFit: "cover",
           display: "block",
+          pointerEvents: "none"
         }}
       />
     </div>
@@ -74,37 +96,11 @@ function SymbolCard({ symbol, isWinning = false, isNew = false, delay = 0, idleD
 
 function MultiplierBar({ current }: { current: number }) {
   return (
-    <div
-      style={{
-        display: "flex",
-        gap: "5px",
-        justifyContent: "center",
-        alignItems: "center",
-        padding: "3px 10px",
-        background: "radial-gradient(ellipse at center, #7f1d1d, #450a0a)",
-        border: "1.5px solid #d4af37",
-        borderRadius: "18px",
-        boxShadow: "0 2px 10px rgba(0,0,0,0.6)",
-      }}
-    >
+    <div style={{ display: "flex", gap: "4px", justifyContent: "center", alignItems: "center", padding: "3px 12px", background: "radial-gradient(ellipse at center, #7f1d1d, #450a0a)", border: "1.5px solid #d4af37", borderRadius: "20px", boxShadow: "0 2px 10px rgba(0,0,0,0.8)" }}>
       {MULTIPLIERS.map((m) => {
         const on = current >= m;
         return (
-          <div
-            key={m}
-            style={{
-              padding: "2px 7px",
-              borderRadius: "10px",
-              fontWeight: 900,
-              fontSize: "11px",
-              fontFamily: "Arial, sans-serif",
-              background: on ? "linear-gradient(180deg, #fef08a, #ca8a04)" : "rgba(0,0,0,0.4)",
-              border: on ? "1px solid #ffffff" : "1px solid rgba(212,175,55,0.2)",
-              color: on ? "#450a0a" : "rgba(255,255,255,0.4)",
-              boxShadow: on ? "0 0 8px #fef08a" : "none",
-              transition: "all 0.3s",
-            }}
-          >
+          <div key={m} style={{ padding: "3px 10px", borderRadius: "12px", fontWeight: 900, fontSize: "12px", fontFamily: "Arial, sans-serif", background: on ? "linear-gradient(180deg, #fef08a, #ca8a04)" : "rgba(0,0,0,0.5)", border: on ? "1px solid #ffffff" : "1px solid rgba(212,175,55,0.2)", color: on ? "#450a0a" : "rgba(255,255,255,0.4)", boxShadow: on ? "0 0 8px #fef08a" : "none", transition: "all 0.3s" }}>
             x{m}
           </div>
         );
@@ -123,38 +119,21 @@ function JackpotDrawer({ jackpots, isOpen, onClose }: { jackpots: any; isOpen: b
   ];
 
   return (
-    <div
-      onClick={onClose}
-      style={{ position: "absolute", inset: 0, zIndex: 60, background: "rgba(0,0,0,0.6)", display: "flex", justifyContent: "flex-start" }}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          width: "210px",
-          height: "100%",
-          background: "linear-gradient(180deg, #2a0808, #0f0404)",
-          borderRight: "2px solid #d4af37",
-          padding: "calc(16px + env(safe-area-inset-top)) 12px 16px",
-          boxShadow: "5px 0 25px rgba(0,0,0,0.8)",
-          display: "flex",
-          flexDirection: "column",
-          gap: "10px",
-        }}
-      >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #d4af37", paddingBottom: "8px" }}>
-          <span style={{ color: "#fff1a8", fontWeight: 900, fontSize: "13px", letterSpacing: "0.05em" }}>JACKPOTS</span>
-          <button onClick={onClose} style={{ background: "none", border: "none", color: "#d4af37", fontSize: "16px", cursor: "pointer" }}>X</button>
-        </div>
-        {tiers.map(([n, v, c]: any) => (
-          <div key={n} style={{ padding: "8px 10px", background: "rgba(0,0,0,0.5)", border: `1px solid ${c}`, borderRadius: "8px", textAlign: "left" }}>
-            <div style={{ fontSize: "9px", fontWeight: 800, color: c, letterSpacing: "0.08em" }}>{n}</div>
-            <div style={{ fontSize: "15px", fontWeight: 900, color: "#ffffff", fontFamily: "monospace", marginTop: "2px" }}>
-              ${Number(v).toFixed(2)}
+    <>
+      <div onClick={onClose} style={{ position: "absolute", inset: 0, zIndex: 60, background: "rgba(0,0,0,0.6)" }} />
+      <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: "180px", zIndex: 65, background: "linear-gradient(180deg, #2a0808, #0f0404)", borderRight: "2px solid #d4af37", padding: "16px 12px", display: "flex", flexDirection: "column", boxShadow: "5px 0 25px rgba(0,0,0,0.9)", animation: "slideRight 0.3s ease-out" }}>
+        <div style={{ color: "#fff1a8", fontSize: "14px", fontWeight: 900, marginBottom: "16px", textAlign: "center", borderBottom: "1px solid #d4af37", paddingBottom: "8px" }}>JACKPOTS</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: "8px", flex: 1 }}>
+          {tiers.map(([n, v, c]: any) => (
+            <div key={n} style={{ padding: "10px", background: "rgba(0,0,0,0.5)", border: `1px solid ${c}`, borderRadius: "8px" }}>
+              <div style={{ fontSize: "10px", fontWeight: 800, color: c, letterSpacing: "0.1em" }}>{n}</div>
+              <div style={{ fontSize: "16px", fontWeight: 900, color: "#ffffff", fontFamily: "monospace", marginTop: "4px" }}>${Number(v).toFixed(2)}</div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
+        <button onClick={onClose} style={{ width: "100%", padding: "12px", borderRadius: "8px", background: "transparent", border: "1px solid rgba(212,175,55,0.4)", color: "#d4af37", fontWeight: 800, cursor: "pointer" }}>CLOSE</button>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -196,12 +175,7 @@ export default function GamePage() {
       try {
         const res = await getJackpots();
         if (cancelled) return;
-        setJackpots({
-          grand: res.data.grand?.value ?? 0,
-          major: res.data.major?.value ?? 0,
-          minor: res.data.minor?.value ?? 0,
-          mini: res.data.mini?.value ?? 0,
-        });
+        setJackpots({ grand: res.data.grand?.value ?? 0, major: res.data.major?.value ?? 0, minor: res.data.minor?.value ?? 0, mini: res.data.mini?.value ?? 0 });
       } catch (e) {}
     };
     poll();
@@ -282,7 +256,7 @@ export default function GamePage() {
         }
       }
       if (result.freeSpinsAwarded > 0) setFreeSpinMode(true, result.freeSpinsAwarded);
-      if (jackpotWin > 0) setMessage(`JACKPOT! ${result.jackpot.tier?.toUpperCase()} WON`);
+      if (jackpotWin > 0) setMessage(`JACKPOT! ${result.jackpot.tier?.toUpperCase()}`);
     } catch (err: any) {
       setMessage(err.message || "Spin error");
     } finally {
@@ -327,8 +301,8 @@ export default function GamePage() {
       <div
         style={{
           width: "100%",
-          maxWidth: "400px",
-          height: "100%",
+          maxWidth: "414px",
+          height: "100dvh",
           display: "flex",
           flexDirection: "column",
           fontFamily: "Arial, sans-serif",
@@ -340,43 +314,27 @@ export default function GamePage() {
           backgroundRepeat: "no-repeat",
         }}
       >
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            zIndex: 0,
-            pointerEvents: "none",
-            background: "radial-gradient(circle at 50% 40%, rgba(212,175,55,0.10), transparent 55%)",
-            animation: "bgPulse 6s ease-in-out infinite",
-          }}
-        />
+        <div style={{ position: "absolute", inset: 0, zIndex: 0, pointerEvents: "none", background: "radial-gradient(circle at 50% 40%, rgba(212,175,55,0.15), transparent 60%)", animation: "bgPulse 6s ease-in-out infinite" }} />
 
         {showWin && <WinCelebration amount={winAmount} onClose={() => { setShowWin(false); winShownRef.current = false; }} />}
-
+        
         <JackpotDrawer jackpots={jackpots} isOpen={showJackpotDrawer} onClose={() => setShowJackpotDrawer(false)} />
+        
+        {/* Jackpot Trigger Tab */}
+        <button
+          onClick={() => setShowJackpotDrawer(true)}
+          style={{ position: "absolute", left: 0, top: "25%", zIndex: 20, width: "32px", height: "70px", background: "linear-gradient(90deg, #854d0e, #451a03)", border: "2px solid #fef08a", borderLeft: "none", borderRadius: "0 8px 8px 0", color: "#fef08a", fontSize: "12px", fontWeight: 900, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", writingMode: "vertical-rl", textOrientation: "mixed", boxShadow: "2px 0 10px rgba(0,0,0,0.8)" }}
+        >
+          JP
+        </button>
 
         {showBetPanel && (
-          <div onClick={() => setShowBetPanel(false)} style={{ position: "absolute", inset: 0, zIndex: 50, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "flex-end" }}>
+          <div onClick={() => setShowBetPanel(false)} style={{ position: "absolute", inset: 0, zIndex: 50, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "flex-end" }}>
             <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", background: "linear-gradient(180deg, #2a0808, #120303)", borderTop: "2px solid #d4af37", borderRadius: "16px 16px 0 0", padding: "16px 16px calc(16px + env(safe-area-inset-bottom))" }}>
-              <div style={{ color: "#fff1a8", fontSize: "12px", fontWeight: 800, marginBottom: "12px", textAlign: "center" }}>SELECT BET AMOUNT</div>
+              <div style={{ color: "#fff1a8", fontSize: "12px", fontWeight: 800, marginBottom: "12px", textAlign: "center" }}>SELECT BET</div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "8px", maxHeight: "240px", overflowY: "auto", paddingBottom: "8px" }}>
                 {BET_OPTIONS.map((b) => (
-                  <button
-                    key={b}
-                    onClick={() => { setBetAmount(b); setShowBetPanel(false); }}
-                    style={{
-                      padding: "10px 0",
-                      borderRadius: "6px",
-                      border: `1px solid ${betAmount === b ? "#fff1a8" : "rgba(212,175,55,0.3)"}`,
-                      fontWeight: 800,
-                      fontSize: "13px",
-                      background: betAmount === b ? "linear-gradient(180deg, #ca8a04, #854d0e)" : "rgba(0,0,0,0.6)",
-                      color: betAmount === b ? "#ffffff" : "#d4af37",
-                      cursor: "pointer",
-                    }}
-                  >
-                    ${b}
-                  </button>
+                  <button key={b} onClick={() => { setBetAmount(b); setShowBetPanel(false); }} style={{ padding: "10px 0", borderRadius: "6px", border: `1px solid ${betAmount === b ? "#fff1a8" : "rgba(212,175,55,0.3)"}`, fontWeight: 800, fontSize: "13px", background: betAmount === b ? "linear-gradient(180deg, #ca8a04, #854d0e)" : "rgba(0,0,0,0.6)", color: betAmount === b ? "#ffffff" : "#d4af37", cursor: "pointer" }}>${b}</button>
                 ))}
               </div>
             </div>
@@ -384,60 +342,27 @@ export default function GamePage() {
         )}
 
         {showAutoPanel && (
-          <div onClick={() => setShowAutoPanel(false)} style={{ position: "absolute", inset: 0, zIndex: 50, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "flex-end" }}>
+          <div onClick={() => setShowAutoPanel(false)} style={{ position: "absolute", inset: 0, zIndex: 50, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "flex-end" }}>
             <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", background: "linear-gradient(180deg, #2a0808, #120303)", borderTop: "2px solid #a855f7", borderRadius: "16px 16px 0 0", padding: "16px 16px calc(16px + env(safe-area-inset-bottom))" }}>
               <div style={{ color: "#d8b4fe", fontSize: "12px", fontWeight: 800, marginBottom: "12px", textAlign: "center" }}>AUTO SPINS</div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "8px", marginBottom: "12px" }}>
                 {AUTO_OPTIONS.map((n) => (
-                  <button
-                    key={n}
-                    onClick={() => { setAutoSpins(n); setIsAuto(true); setShowAutoPanel(false); }}
-                    style={{ padding: "12px 0", borderRadius: "6px", border: "1px solid #a855f7", background: "rgba(168,85,247,0.2)", color: "#d8b4fe", fontWeight: 800, fontSize: "14px", cursor: "pointer" }}
-                  >
-                    {n}x
-                  </button>
+                  <button key={n} onClick={() => { setAutoSpins(n); setIsAuto(true); setShowAutoPanel(false); }} style={{ padding: "12px 0", borderRadius: "6px", border: "1px solid #a855f7", background: "rgba(168,85,247,0.2)", color: "#d8b4fe", fontWeight: 800, fontSize: "14px", cursor: "pointer" }}>{n}x</button>
                 ))}
               </div>
             </div>
           </div>
         )}
 
-        <div style={{ padding: "calc(10px + env(safe-area-inset-top)) 10px 6px", display: "flex", justifyContent: "space-between", alignItems: "center", zIndex: 10, position: "relative" }}>
-          <button
-            onClick={() => setShowJackpotDrawer(true)}
-            style={{
-              width: `${BTN_SIZE}px`,
-              height: `${BTN_SIZE}px`,
-              borderRadius: "50%",
-              background: "linear-gradient(180deg, #854d0e, #451a03)",
-              border: "1.5px solid #fef08a",
-              color: "#fef08a",
-              fontSize: "9px",
-              fontWeight: 900,
-              cursor: "pointer",
-              boxShadow: "0 2px 6px rgba(0,0,0,0.5)",
-            }}
-          >
-            JP
-          </button>
+        {/* Top Header: Multiplier Bar */}
+        <div style={{ padding: "calc(16px + env(safe-area-inset-top)) 10px 10px", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 10, position: "relative" }}>
           <MultiplierBar current={multiplier} />
-          <div style={{ color: "rgba(255,255,255,0.6)", fontSize: "10px", minWidth: `${BTN_SIZE}px`, textAlign: "right" }}>{onlinePlayers} on</div>
         </div>
 
+        {/* Game Grid Container */}
         <div style={{ flex: 1, padding: "4px 6px", minHeight: 0, display: "flex", alignItems: "center", position: "relative", zIndex: 5 }}>
-          <div
-            style={{
-              width: "100%",
-              height: "100%",
-              maxHeight: "460px",
-              background: "rgba(0,0,0,0.35)",
-              border: "1.5px solid rgba(212,175,55,0.4)",
-              borderRadius: "8px",
-              padding: "2px",
-              boxShadow: "inset 0 0 15px rgba(0,0,0,0.8)",
-            }}
-          >
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gridTemplateRows: "repeat(4, 1fr)", gap: "2px", height: "100%" }}>
+          <div style={{ width: "100%", aspectRatio: "5/4", background: "rgba(0,0,0,0.5)", border: "2px solid rgba(212,175,55,0.7)", borderRadius: "6px", padding: "1px", boxShadow: "inset 0 0 20px rgba(0,0,0,0.9), 0 0 15px rgba(212,175,55,0.2)" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gridTemplateRows: "repeat(4, 1fr)", gap: "1px", height: "100%" }}>
               {Array.from({ length: 4 }, (_, row) =>
                 displayGrid.map((col, reel) => (
                   <SymbolCard
@@ -454,131 +379,88 @@ export default function GamePage() {
           </div>
         </div>
 
-        <div style={{ height: "22px", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", zIndex: 5 }}>
+        {/* Win / Status Banner */}
+        <div style={{ height: "30px", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", zIndex: 5 }}>
           {lastWin > 0 ? (
-            <div style={{ color: "#fef08a", fontWeight: 900, fontSize: "13px", textShadow: "0 0 8px #ca8a04" }}>
-              WIN: ${lastWin.toFixed(2)}
-            </div>
+            <div style={{ color: "#fef08a", fontWeight: 900, fontSize: "16px", textShadow: "0 0 10px #ca8a04", animation: "slideUp 0.3s ease" }}>WIN ${lastWin.toFixed(2)}</div>
           ) : isFreeSpinMode ? (
-            <span style={{ color: "#d8b4fe", fontWeight: 800, fontSize: "11px" }}>FREE SPINS: {freeSpinsLeft}</span>
+            <span style={{ color: "#d8b4fe", fontWeight: 800, fontSize: "14px" }}>FREE SPINS: {freeSpinsLeft}</span>
           ) : message ? (
-            <span style={{ color: "#fbbf24", fontWeight: 700, fontSize: "10px" }}>{message}</span>
+            <span style={{ color: "#fbbf24", fontWeight: 700, fontSize: "12px" }}>{message}</span>
           ) : null}
         </div>
 
-        <div style={{ flexShrink: 0, background: "linear-gradient(180deg, #180505, #000000)", borderTop: "1.5px solid #d4af37", padding: "6px 8px calc(10px + env(safe-area-inset-bottom))", position: "relative", zIndex: 10 }}>
-
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
-            <button
-              onClick={() => setIsTurbo((t) => !t)}
-              style={{
-                width: `${BTN_SIZE}px`,
-                height: `${BTN_SIZE}px`,
-                borderRadius: "50%",
-                border: `1.5px solid ${isTurbo ? "#fef08a" : "rgba(212,175,55,0.3)"}`,
-                background: isTurbo ? "#ca8a04" : "rgba(0,0,0,0.6)",
-                color: isTurbo ? "#ffffff" : "#d4af37",
-                fontSize: "9px",
-                fontWeight: 900,
-                cursor: "pointer",
-              }}
-            >
-              FAST
-            </button>
-
-            <button onClick={() => changeBet(-1)} style={{ width: `${BTN_SIZE}px`, height: `${BTN_SIZE}px`, borderRadius: "50%", border: "1.5px solid rgba(212,175,55,0.4)", background: "rgba(0,0,0,0.6)", color: "#d4af37", fontSize: "18px", fontWeight: 900, cursor: "pointer" }}>
-              -
-            </button>
-
-            <button
-              onClick={isAuto ? () => { setIsAuto(false); setAutoSpins(0); } : handleSpin}
-              disabled={isSpinning && !isAuto}
-              style={{
-                width: "56px",
-                height: "56px",
-                borderRadius: "50%",
-                border: "2px solid #fef08a",
-                cursor: "pointer",
-                background: "radial-gradient(circle, #fef08a, #ca8a04, #713f12)",
-                boxShadow: isSpinning ? "0 0 15px #fef08a" : "0 2px 8px rgba(0,0,0,0.8)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <img
-                src="/assets/symbols/spin-button.webp"
-                alt="SPIN"
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "contain",
-                  transform: `rotate(${spinDeg}deg)`,
-                  transition: isSpinning ? "transform 0.8s ease" : "transform 0.2s ease",
-                }}
-              />
-            </button>
-
-            <button onClick={() => changeBet(1)} style={{ width: `${BTN_SIZE}px`, height: `${BTN_SIZE}px`, borderRadius: "50%", border: "1.5px solid rgba(212,175,55,0.4)", background: "rgba(0,0,0,0.6)", color: "#d4af37", fontSize: "18px", fontWeight: 900, cursor: "pointer" }}>
-              +
-            </button>
-
-            <button
-              onClick={() => setShowAutoPanel(true)}
-              style={{
-                width: `${BTN_SIZE}px`,
-                height: `${BTN_SIZE}px`,
-                borderRadius: "50%",
-                border: `1.5px solid ${isAuto ? "#a855f7" : "rgba(212,175,55,0.3)"}`,
-                background: isAuto ? "#7e22ce" : "rgba(0,0,0,0.6)",
-                color: isAuto ? "#ffffff" : "#d4af37",
-                fontSize: isAuto ? "11px" : "9px",
-                fontWeight: 900,
-                cursor: "pointer",
-              }}
-            >
-              {isAuto ? autoSpins : "AUTO"}
-            </button>
+        {/* Bottom Control Bar */}
+        <div style={{ flexShrink: 0, background: "linear-gradient(180deg, #3e1c12, #210d07)", borderTop: "2px solid #d4af37", padding: "10px 12px calc(16px + env(safe-area-inset-bottom))", position: "relative", zIndex: 10, boxShadow: "0 -4px 15px rgba(0,0,0,0.8)" }}>
+          
+          {/* Info Row: Wallet | Bet | Win */}
+          <div style={{ display: "flex", gap: "6px", marginBottom: "12px" }}>
+            <div style={{ flex: 1, background: "rgba(0,0,0,0.8)", border: "1px solid rgba(212,175,55,0.3)", borderRadius: "6px", padding: "6px 2px", textAlign: "center" }}>
+              <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.6)", marginBottom: "3px" }}>WALLET</div>
+              <div style={{ fontSize: "13px", fontWeight: 800, color: "#4ade80", fontFamily: "monospace" }}>${Number(balance).toFixed(2)}</div>
+            </div>
+            <div onClick={() => setShowBetPanel(true)} style={{ flex: 1, background: "rgba(0,0,0,0.8)", border: "1px solid #d4af37", borderRadius: "6px", padding: "6px 2px", textAlign: "center", cursor: "pointer", boxShadow: "inset 0 0 8px rgba(212,175,55,0.2)" }}>
+              <div style={{ fontSize: "10px", color: "#d4af37", marginBottom: "3px" }}>BET</div>
+              <div style={{ fontSize: "13px", fontWeight: 800, color: "#ffffff", fontFamily: "monospace" }}>${betAmount.toFixed(2)}</div>
+            </div>
+            <div style={{ flex: 1, background: "rgba(0,0,0,0.8)", border: "1px solid rgba(212,175,55,0.3)", borderRadius: "6px", padding: "6px 2px", textAlign: "center" }}>
+              <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.6)", marginBottom: "3px" }}>WIN</div>
+              <div style={{ fontSize: "13px", fontWeight: 800, color: "#fef08a", fontFamily: "monospace" }}>${lastWin.toFixed(2)}</div>
+            </div>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "4px" }}>
-            <div style={{ background: "rgba(0,0,0,0.7)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: "6px", padding: "4px 2px", textAlign: "center" }}>
-              <div style={{ fontSize: "8px", color: "rgba(255,255,255,0.5)" }}>WALLET</div>
-              <div style={{ fontSize: "11px", fontWeight: 800, color: "#4ade80", fontFamily: "monospace" }}>${Number(balance).toFixed(2)}</div>
-            </div>
+          {/* Action Row: EXACTLY 5 Buttons (Turbo, Minus, Spin, Plus, Auto) */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 4px" }}>
+            
+            <button onClick={() => setIsTurbo((t) => !t)} style={{ width: `${SMALL_BTN}px`, height: `${SMALL_BTN}px`, borderRadius: "50%", border: `1.5px solid ${isTurbo ? "#fef08a" : "rgba(212,175,55,0.4)"}`, background: isTurbo ? "#ca8a04" : "rgba(0,0,0,0.7)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: isTurbo ? "0 0 12px #ca8a04" : "none" }}>
+              <IconLightning c={isTurbo ? "#ffffff" : "#d4af37"} />
+            </button>
 
-            <div
-              onClick={() => setShowBetPanel(true)}
-              style={{ background: "rgba(0,0,0,0.7)", border: "1px solid #d4af37", borderRadius: "6px", padding: "4px 2px", textAlign: "center", cursor: "pointer" }}
-            >
-              <div style={{ fontSize: "8px", color: "#d4af37" }}>BET</div>
-              <div style={{ fontSize: "11px", fontWeight: 800, color: "#ffffff", fontFamily: "monospace" }}>${betAmount.toFixed(2)}</div>
-            </div>
+            <button onClick={() => changeBet(-1)} style={{ width: `${SMALL_BTN}px`, height: `${SMALL_BTN}px`, borderRadius: "50%", border: "1.5px solid rgba(212,175,55,0.4)", background: "rgba(0,0,0,0.7)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <IconMinus />
+            </button>
 
-            <div style={{ background: "rgba(0,0,0,0.7)", border: "1px solid rgba(212,175,55,0.2)", borderRadius: "6px", padding: "4px 2px", textAlign: "center" }}>
-              <div style={{ fontSize: "8px", color: "rgba(255,255,255,0.5)" }}>WIN</div>
-              <div style={{ fontSize: "11px", fontWeight: 800, color: "#fef08a", fontFamily: "monospace" }}>${lastWin.toFixed(2)}</div>
-            </div>
+            <button onClick={isAuto ? () => { setIsAuto(false); setAutoSpins(0); } : handleSpin} disabled={isSpinning && !isAuto} style={{ width: `${SPIN_BTN}px`, height: `${SPIN_BTN}px`, borderRadius: "50%", border: "2.5px solid #fef08a", cursor: "pointer", background: "radial-gradient(circle, #fef08a, #ca8a04, #713f12)", boxShadow: isSpinning ? "0 0 20px #fef08a" : "0 4px 12px rgba(0,0,0,0.9)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
+              <img src="/assets/symbols/spin-button.webp" alt="SPIN" style={{ width: "90%", height: "90%", objectFit: "contain", transform: `rotate(${spinDeg}deg)`, transition: isSpinning ? "transform 0.8s ease" : "transform 0.2s ease" }} />
+              {isAuto && <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(0,0,0,0.6)", borderRadius:"50%", color:"#fff", fontWeight:900, fontSize:"14px" }}>{autoSpins}</div>}
+            </button>
+
+            <button onClick={() => changeBet(1)} style={{ width: `${SMALL_BTN}px`, height: `${SMALL_BTN}px`, borderRadius: "50%", border: "1.5px solid rgba(212,175,55,0.4)", background: "rgba(0,0,0,0.7)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <IconPlus />
+            </button>
+
+            <button onClick={() => setShowAutoPanel(true)} style={{ width: `${SMALL_BTN}px`, height: `${SMALL_BTN}px`, borderRadius: "50%", border: `1.5px solid ${isAuto ? "#a855f7" : "rgba(212,175,55,0.4)"}`, background: isAuto ? "#7e22ce" : "rgba(0,0,0,0.7)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: isAuto ? "0 0 12px #7e22ce" : "none" }}>
+              <IconAuto c={isAuto ? "#ffffff" : "#d4af37"} />
+            </button>
+
           </div>
         </div>
 
         <style>{`
           @keyframes cardShake {
-            0%, 100% { transform: rotate(0deg) scale(1.04); }
-            25% { transform: rotate(-2deg) scale(1.04); }
-            75% { transform: rotate(2deg) scale(1.04); }
+            0%, 100% { transform: rotate(0deg) scale(1.05); }
+            25% { transform: rotate(-3deg) scale(1.05); }
+            75% { transform: rotate(3deg) scale(1.05); }
           }
           @keyframes cardGlow {
-            from { box-shadow: 0 0 8px rgba(255,241,168,0.6); }
-            to { box-shadow: 0 0 20px rgba(255,241,168,1); }
+            from { box-shadow: 0 0 10px rgba(255,241,168,0.7), inset 0 0 8px rgba(255,241,168,0.3); }
+            to { box-shadow: 0 0 24px rgba(255,241,168,1), inset 0 0 16px rgba(255,241,168,0.6); }
           }
           @keyframes idlePulse {
             0%, 100% { filter: brightness(1); }
-            50% { filter: brightness(1.05); }
+            50% { filter: brightness(1.08); }
           }
           @keyframes bgPulse {
-            0%, 100% { opacity: 0.6; }
+            0%, 100% { opacity: 0.7; }
             50% { opacity: 1; }
+          }
+          @keyframes slideRight {
+            from { transform: translateX(-100%); }
+            to { transform: translateX(0); }
+          }
+          @keyframes slideUp {
+            from { transform: translateY(10px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
           }
           * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
         `}</style>
