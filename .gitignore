@@ -25,3 +25,7 @@ Thumbs.db
 # Local backups (not for version control)
 *.rdb
 *-backup.ps1
+
+.vscode/
+
+.vscode/
