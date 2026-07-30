@@ -27,10 +27,6 @@ const AUTO_OPTIONS = [10, 25, 50, 100];
 const SMALL_BTN = 42;
 const SPIN_BTN = 72;
 
-function delay(ms: number) {
-  return new Promise((r) => setTimeout(r, ms));
-}
-
 /* ==========================================
    SVG ICONS (No Text)
    ========================================== */
@@ -51,30 +47,22 @@ const IconAuto = ({ s = 20, c = "#d4af37" }) => (
    COMPONENTS
    ========================================== */
 
-function SymbolCard({
-  symbol, isWinning = false, isNew = false, isRevealing = false,
-  isRemoving = false, isDropping = false,
-  delay: enterDelay = 0, idleDelay = 0, dim = false,
-}: {
-  symbol: string; isWinning?: boolean; isNew?: boolean; isRevealing?: boolean;
-  isRemoving?: boolean; isDropping?: boolean;
-  delay?: number; idleDelay?: number; dim?: boolean;
-}) {
+function SymbolCard({ symbol, isWinning = false, isNew = false, isRevealing = false, delay = 0, idleDelay = 0, dim = false }: { symbol: string; isWinning?: boolean; isNew?: boolean; isRevealing?: boolean; delay?: number; idleDelay?: number; dim?: boolean }) {
   const [vis, setVis] = useState(!isNew);
   const [flipped, setFlipped] = useState(false);
-  const [dropVis, setDropVis] = useState(true);
   const isScatter = symbol === "SCATTER";
   const isGolden = symbol === "GOLDEN";
 
   useEffect(() => {
     if (isNew) {
       setVis(false);
-      const t = setTimeout(() => setVis(true), enterDelay + 20);
+      const t = setTimeout(() => setVis(true), delay + 20);
       return () => clearTimeout(t);
     }
-  }, [isNew, enterDelay]);
+  }, [isNew, delay]);
 
   // Golden -> Wild flip: triggers when this cell is marked as revealing
+  // (set by doSpin once the reels have visually landed).
   useEffect(() => {
     if (isRevealing) {
       const t = setTimeout(() => setFlipped(true), 50);
@@ -83,18 +71,6 @@ function SymbolCard({
       setFlipped(false);
     }
   }, [isRevealing]);
-
-  // Cascade refill: this specific cell just got a new symbol dropped in.
-  // Scoped per-cell so only the refilled positions animate, not the whole grid.
-  useEffect(() => {
-    if (isDropping) {
-      setDropVis(false);
-      const t = setTimeout(() => setDropVis(true), 30);
-      return () => clearTimeout(t);
-    }
-  }, [isDropping]);
-
-  const hidden = !vis || !dropVis;
 
   return (
     <div
@@ -105,28 +81,14 @@ function SymbolCard({
         position: "relative",
         background: isScatter ? "transparent" : "#ffffff",
         boxSizing: "border-box",
-        // Softer amber-gold instead of harsh neon yellow
-        border: isWinning ? "3px solid #f0b429" : isScatter ? "none" : "1px solid rgba(0,0,0,0.6)",
+        border: isWinning ? "3px solid #ffea00" : isScatter ? "none" : "1px solid rgba(0,0,0,0.6)",
         borderRadius: "4px",
         zIndex: isWinning ? 10 : 1,
-        transform: isRemoving
-          ? "scale(0.4) rotate(15deg)"
-          : hidden
-            ? "translateY(-140px) scale(0.85)"
-            : (isWinning ? "scale(1.08)" : "scale(1)"),
-        opacity: isRemoving ? 0 : hidden ? 0 : 1,
+        transform: vis ? (isWinning ? "scale(1.08)" : "scale(1)") : "translateY(-100px) scale(0.85)",
+        opacity: vis ? 1 : 0,
         filter: dim ? "brightness(0.3)" : "brightness(1)",
-        transition: isRemoving
-          ? "transform 0.28s ease-in, opacity 0.28s ease-in"
-          : isDropping
-            ? `transform 0.55s cubic-bezier(0.22, 1.1, 0.4, 1) ${enterDelay}ms, opacity 0.35s ease ${enterDelay}ms, filter 0.3s ease`
-            : `transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) ${enterDelay}ms, opacity 0.2s ease ${enterDelay}ms, filter 0.3s ease`,
-        // Softer warm gold glow instead of the harsh bright-yellow glow
-        boxShadow: isWinning
-          ? "0 0 16px rgba(240,180,41,0.75), inset 0 0 8px rgba(240,180,41,0.45)"
-          : isDropping && !dropVis
-            ? "0 0 22px 4px rgba(255,215,120,0.55)"
-            : "none",
+        transition: `transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) ${delay}ms, opacity 0.2s ease ${delay}ms, filter 0.3s ease`,
+        boxShadow: isWinning ? "0 0 20px rgba(255,234,0,0.9), inset 0 0 10px rgba(255,234,0,0.6)" : "none",
         animation: isWinning ? "cardShake 0.35s ease-in-out infinite" : `idlePulse 4s ease-in-out ${idleDelay}ms infinite`,
       }}
     >
@@ -140,7 +102,7 @@ function SymbolCard({
               transformStyle: "preserve-3d",
               transition: "transform 0.55s cubic-bezier(0.45,0.05,0.15,1)",
               transform: flipped ? "rotateY(180deg)" : "rotateY(0deg)",
-              animation: !flipped ? "goldenGlowPulse 1.6s ease-in-out infinite" : "none",
+              filter: !flipped ? "drop-shadow(0 0 6px rgba(255,200,60,0.65))" : "none",
             }}
           >
             <img
@@ -156,42 +118,6 @@ function SymbolCard({
                 pointerEvents: "none",
               }}
             />
-
-            {/* Shimmer sweep — diagonal light band sliding across the gold card */}
-            {!flipped && (
-              <div
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  backgroundImage: "linear-gradient(115deg, transparent 35%, rgba(255,255,255,0.9) 48%, rgba(255,235,170,0.95) 50%, rgba(255,255,255,0.9) 52%, transparent 65%)",
-                  backgroundSize: "300% 300%",
-                  mixBlendMode: "overlay",
-                  animation: "shimmerSweep 2.4s ease-in-out infinite",
-                  pointerEvents: "none",
-                  backfaceVisibility: "hidden",
-                  WebkitBackfaceVisibility: "hidden",
-                }}
-              />
-            )}
-
-            {/* Two small sparkle glints, staggered, for the "living" feel */}
-            {!flipped && (
-              <>
-                <div style={{
-                  position: "absolute", top: "18%", left: "22%", width: "10px", height: "10px",
-                  background: "radial-gradient(circle, #fffdf0 0%, rgba(255,253,240,0) 70%)",
-                  borderRadius: "50%", pointerEvents: "none",
-                  animation: "sparklePulse 2.8s ease-in-out infinite",
-                }} />
-                <div style={{
-                  position: "absolute", bottom: "22%", right: "18%", width: "8px", height: "8px",
-                  background: "radial-gradient(circle, #fffdf0 0%, rgba(255,253,240,0) 70%)",
-                  borderRadius: "50%", pointerEvents: "none",
-                  animation: "sparklePulse 2.8s ease-in-out infinite 1.2s",
-                }} />
-              </>
-            )}
-
             <img
               src={SYMBOL_IMAGES.WILD}
               alt="wild"
@@ -207,27 +133,6 @@ function SymbolCard({
             />
           </div>
         </div>
-      ) : isScatter ? (
-        <div style={{ position: "absolute", inset: 0 }}>
-          {/* Continuous coin glow, JILI-style — always active behind the scatter, not just on win */}
-          <div style={{
-            position: "absolute", inset: "8%",
-            background: "radial-gradient(circle, rgba(255,215,90,0.55) 0%, rgba(255,215,90,0) 70%)",
-            animation: "scatterGlowPulse 1.8s ease-in-out infinite",
-            pointerEvents: "none",
-          }} />
-          <img
-            src={SYMBOL_IMAGES.SCATTER}
-            alt="SCATTER"
-            style={{
-              position: "absolute", top: "50%", left: "50%",
-              width: "100%", height: "100%",
-              transform: "translate(-50%, -50%)",
-              objectFit: "cover", display: "block", pointerEvents: "none",
-              animation: "scatterSpinShine 3.5s linear infinite",
-            }}
-          />
-        </div>
       ) : (
         <img
           src={SYMBOL_IMAGES[symbol] || SYMBOL_IMAGES.A}
@@ -236,8 +141,8 @@ function SymbolCard({
             position: "absolute",
             top: "50%",
             left: "50%",
-            width: "125%",
-            height: "125%",
+            width: isScatter ? "100%" : "125%",
+            height: isScatter ? "100%" : "125%",
             transform: "translate(-50%, -50%)",
             objectFit: "cover",
             display: "block",
@@ -290,34 +195,8 @@ function TotalWinPopup({ amount, cascadeStep, visible, onClose }: { amount: numb
         )}
       </div>
 
-      {/* Massive Center Number — layered text-shadow stack simulates 3D
-          extrusion (a beveled, coin-embossed look) using pure CSS, no
-          image assets or WebGL required. */}
-      <div
-        style={{
-          position: "relative",
-          zIndex: 65,
-          fontSize: "85px",
-          fontWeight: 900,
-          fontFamily: "Arial, sans-serif",
-          letterSpacing: "0.02em",
-          backgroundImage: "linear-gradient(180deg, #fffbe0 0%, #ffe89a 25%, #fbc02d 55%, #c98a10 80%, #8a5a05 100%)",
-          WebkitBackgroundClip: "text",
-          backgroundClip: "text",
-          color: "transparent",
-          WebkitTextStroke: "1.5px #6b3f05",
-          textShadow: `
-            0 1px 0 #a8720a,
-            0 2px 0 #96650a,
-            0 3px 0 #855909,
-            0 4px 0 #744d08,
-            0 5px 6px rgba(0,0,0,0.5),
-            0 8px 18px rgba(0,0,0,0.55),
-            0 0 30px rgba(255,215,110,0.6)
-          `,
-          animation: "numberPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)",
-        }}
-      >
+      {/* Massive Center Number */}
+      <div style={{ position: "relative", zIndex: 65, fontSize: "85px", fontWeight: 900, fontFamily: "Arial, sans-serif", color: "#fef08a", WebkitTextStroke: "2px #854d0e", textShadow: "0 10px 20px rgba(0,0,0,0.8), 0 0 40px #ca8a04, inset 0 0 10px #ffffff", animation: "numberPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)" }}>
         {amount.toFixed(2)}
       </div>
     </div>
@@ -377,8 +256,6 @@ export default function GamePage() {
   const [showJackpotDrawer, setShowJackpotDrawer] = useState(false);
   const [spinDeg, setSpinDeg] = useState(0);
   const [revealingPositions, setRevealingPositions] = useState<string[]>([]);
-  const [removingPositions, setRemovingPositions] = useState<string[]>([]);
-  const [droppingPositions, setDroppingPositions] = useState<string[]>([]);
 
   const winShownRef = useRef(false);
   const tokenRef = useRef(token);
@@ -458,15 +335,15 @@ export default function GamePage() {
       // their gold treatment, not yet flipped to WILD.
       setGrid(result.landedGrid || result.grid);
       setIsNewGrid(true);
-      setCascadeStep(0);
+      setMultiplier(result.multiplier);
+      setCascadeStep(result.cascades.length);
 
       const landDelay = turbo ? 250 : 500;
-      await delay(landDelay);
+      await new Promise((r) => setTimeout(r, landDelay));
 
       // 2. If any golden cards landed, run the staggered flip reveal before
-      // committing the fully revealed grid (WILD in place of GOLDEN).
+      // committing the final (WILD-substituted) grid and evaluating wins.
       const goldenPositions: number[][] = result.goldenPositions || [];
-      let workingGrid = result.grid;
       if (goldenPositions.length > 0) {
         const revealKeys = goldenPositions.map(([reel, row]) => `${reel}-${row}`);
         setRevealingPositions(revealKeys);
@@ -474,66 +351,28 @@ export default function GamePage() {
         const staggerStep = turbo ? 40 : 80;
         const flipDuration = turbo ? 300 : 550;
         const totalFlipTime = (goldenPositions.length - 1) * staggerStep + flipDuration;
-        await delay(totalFlipTime);
+        await new Promise((r) => setTimeout(r, totalFlipTime));
 
-        setGrid(workingGrid); // commit fully revealed grid
+        setGrid(result.grid); // commit fully revealed grid (WILD in place of GOLDEN)
         setRevealingPositions([]);
       }
 
-      // 3. Show the FIRST evaluation's wins — these are correctly positioned
-      // against `workingGrid`, since no cascade has happened yet.
-      const initialWinPos: string[] = [];
-      (result.wins || []).forEach((w: any) => w.positions.forEach(([reel, row]: number[]) => initialWinPos.push(`${reel}-${row}`)));
-      if (initialWinPos.length > 0) {
-        setWinPositions(initialWinPos);
-        await delay(turbo ? 350 : 700);
-      }
-
-      // 4. Play each cascade step in sequence. Each cascade's win positions
-      // are highlighted on the grid they actually occurred on, then those
-      // symbols shrink out, then the step's newGrid is committed with a
-      // slower, glowing drop-in (per your JDB reference), then that step's
-      // own wins are highlighted next.
-      const cascades = result.cascades || [];
-      for (let i = 0; i < cascades.length; i++) {
-        const step = cascades[i];
-        const removeKeys: string[] = (step.removedPositions || []).map(([reel, row]: number[]) => `${reel}-${row}`);
-
-        // shrink/fade the winning symbols from the CURRENT grid out
-        setRemovingPositions(removeKeys);
-        await delay(turbo ? 180 : 300);
-
-        // commit the refilled grid for this step, and mark those same
-        // positions as "dropping in" — slower fall with a glow trail
-        workingGrid = step.newGrid;
-        setGrid(workingGrid);
-        setRemovingPositions([]);
-        setDroppingPositions(removeKeys);
-        setMultiplier(step.multiplier);
-        setCascadeStep(i + 1);
-
-        await delay(turbo ? 320 : 600);
-        setDroppingPositions([]);
-
-        // highlight this step's own wins, on the grid that now reflects them
-        const stepWinPos: string[] = [];
-        (step.wins || []).forEach((w: any) => w.positions.forEach(([reel, row]: number[]) => stepWinPos.push(`${reel}-${row}`)));
-        setWinPositions(stepWinPos);
-        await delay(turbo ? 350 : 700);
-      }
+      const winPos: string[] = [];
+      result.wins.forEach((w: any) => w.positions.forEach(([reel, row]: number[]) => winPos.push(`${reel}-${row}`)));
+      result.cascades.forEach((c: any) => c.wins.forEach((w: any) => w.positions.forEach(([reel, row]: number[]) => winPos.push(`${reel}-${row}`))));
+      setWinPositions(winPos);
 
       const jackpotWin = result.jackpot?.triggered ? result.jackpot.winAmount : 0;
       const displayWin = result.totalWin + jackpotWin;
       if (displayWin > 0) {
         setBalance((b: number) => Number((b + displayWin).toFixed(8)));
         setLastWin(displayWin);
+        await new Promise((r) => setTimeout(r, turbo ? 100 : 300));
         if (!winShownRef.current) {
           winShownRef.current = true;
           setWinAmount(displayWin);
           setShowWin(true);
         }
-      } else {
-        setWinPositions([]);
       }
       if (result.freeSpinsAwarded > 0) setFreeSpinMode(true, result.freeSpinsAwarded);
       if (jackpotWin > 0) setMessage(`JACKPOT! ${result.jackpot.tier?.toUpperCase()}`);
@@ -645,17 +484,14 @@ export default function GamePage() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gridTemplateRows: "repeat(4, 1fr)", gap: "0", width: "100%", height: "100%" }}>
               {Array.from({ length: 4 }, (_, row) =>
                 displayGrid.map((col, reel) => {
-                  const cellKey = `${reel}-${row}`;
-                  const isWinningCell = winPositions.includes(cellKey);
+                  const isWinningCell = winPositions.includes(`${reel}-${row}`);
                   return (
                     <SymbolCard
                       key={`${reel}-${row}-${isNewGrid}`}
                       symbol={col[row] || "A"}
                       isWinning={isWinningCell}
                       isNew={isNewGrid}
-                      isRevealing={revealingPositions.includes(cellKey)}
-                      isRemoving={removingPositions.includes(cellKey)}
-                      isDropping={droppingPositions.includes(cellKey)}
+                      isRevealing={revealingPositions.includes(`${reel}-${row}`)}
                       delay={isTurbo ? reel * 10 : reel * 40 + row * 15}
                       idleDelay={(reel * 4 + row) * 180}
                       dim={isAnyWin && !isWinningCell}
@@ -715,9 +551,9 @@ export default function GamePage() {
 
         <style>{`
           @keyframes cardShake {
-            0%, 100% { transform: rotate(0deg) scale(1.08); filter: brightness(1.1); }
-            25% { transform: rotate(-3deg) scale(1.08); filter: brightness(1.25); }
-            75% { transform: rotate(3deg) scale(1.08); filter: brightness(1.25); }
+            0%, 100% { transform: rotate(0deg) scale(1.08); filter: brightness(1.2); }
+            25% { transform: rotate(-3deg) scale(1.08); filter: brightness(1.4); }
+            75% { transform: rotate(3deg) scale(1.08); filter: brightness(1.4); }
           }
           @keyframes pulseScale {
             from { transform: scale(1); opacity: 0.9; }
@@ -739,27 +575,6 @@ export default function GamePage() {
           @keyframes slideRight {
             from { transform: translateX(-100%); }
             to { transform: translateX(0); }
-          }
-          @keyframes shimmerSweep {
-            0%   { background-position: 200% 200%; }
-            100% { background-position: -50% -50%; }
-          }
-          @keyframes goldenGlowPulse {
-            0%, 100% { filter: drop-shadow(0 0 5px rgba(255,200,60,0.55)); }
-            50%      { filter: drop-shadow(0 0 12px rgba(255,215,110,0.9)); }
-          }
-          @keyframes sparklePulse {
-            0%, 100% { opacity: 0; transform: scale(0.6); }
-            50%      { opacity: 1; transform: scale(1.3); }
-          }
-          @keyframes scatterGlowPulse {
-            0%, 100% { opacity: 0.5; transform: scale(0.9); }
-            50%      { opacity: 1; transform: scale(1.15); }
-          }
-          @keyframes scatterSpinShine {
-            0%   { filter: brightness(1) drop-shadow(0 0 4px rgba(255,215,90,0.5)); }
-            50%  { filter: brightness(1.25) drop-shadow(0 0 10px rgba(255,215,90,0.9)); }
-            100% { filter: brightness(1) drop-shadow(0 0 4px rgba(255,215,90,0.5)); }
           }
           * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
         `}</style>

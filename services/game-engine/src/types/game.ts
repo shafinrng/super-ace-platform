@@ -1,6 +1,8 @@
 export type Symbol = "A" | "K" | "Q" | "J" | "SPADE" | "HEART" | "CLUB" | "DIAMOND" | "GOLDEN" | "WILD" | "SCATTER";
 export interface SpinResult {
   grid: Symbol[][];
+  landedGrid: Symbol[][];
+  goldenPositions: number[][];
   wins: WinResult[];
   totalWin: number;
   cascades: CascadeResult[];
