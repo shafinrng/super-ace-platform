@@ -1,4 +1,5 @@
 import { Symbol, WinResult, CascadeResult } from "../types/game";
+import { revealGoldenCards } from "./GoldenCard";
 import { generateGrid } from "./ReelGenerator";
 import { calculateWins } from "./WinCalculator";
 import { MULTIPLIER_STEPS, FREE_SPIN_MULTIPLIER_STEPS } from "./constants";
@@ -18,11 +19,14 @@ function removeWinningSymbols(grid: Symbol[][], wins: WinResult[]): Symbol[][] {
     newGrid[reel] = [...newSymbols, ...filled];
   }
 
-  return newGrid;
+  // Any GOLDEN symbols dropped in during this refill must also flip to
+  // WILD before the next evaluation — same rule as the initial grid.
+  const { revealedGrid } = revealGoldenCards(newGrid);
+  return revealedGrid;
 }
 
 export function runCascades(
-  initialGrid: Symbol[][], 
+  initialGrid: Symbol[][],
   betAmount: number,
   isFreeSpinMode: boolean,
   bias: number = 1.0

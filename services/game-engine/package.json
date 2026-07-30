@@ -5,7 +5,8 @@
     "scripts":  {
                     "dev":  "nodemon --watch src --ext ts --exec ts-node src/index.ts",
                     "build":  "tsc",
-                    "start":  "node dist/index.js"
+                    "start":  "node dist/index.js",
+                    "test:monte-carlo": "ts-node tests/monte-carlo/rtp-test.ts"
                 },
     "dependencies":  {
                          "cors":  "^2.8.5",
