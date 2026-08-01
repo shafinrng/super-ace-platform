@@ -20,7 +20,8 @@ const SYMBOL_IMAGES: Record<string, string> = {
   SCATTER: "/assets/symbols/symbol-scatter.webp",
 };
 
-const MULTIPLIERS = [1, 2, 3, 5];
+const BASE_MULTIPLIERS = [1, 2, 3, 5];
+const FREE_SPIN_MULTIPLIERS = [2, 4, 6, 10];
 const BET_OPTIONS = [0.02, 0.05, 0.10, 0.20, 0.50, 1, 2, 5, 10, 20, 50, 100, 200, 500];
 const AUTO_OPTIONS = [10, 25, 50, 100];
 
@@ -74,7 +75,6 @@ function SymbolCard({
     }
   }, [isNew, enterDelay]);
 
-  // Golden -> Wild flip: triggers when this cell is marked as revealing
   useEffect(() => {
     if (isRevealing) {
       const t = setTimeout(() => setFlipped(true), 50);
@@ -84,8 +84,6 @@ function SymbolCard({
     }
   }, [isRevealing]);
 
-  // Cascade refill: this specific cell just got a new symbol dropped in.
-  // Scoped per-cell so only the refilled positions animate, not the whole grid.
   useEffect(() => {
     if (isDropping) {
       setDropVis(false);
@@ -105,7 +103,6 @@ function SymbolCard({
         position: "relative",
         background: isScatter ? "transparent" : "#ffffff",
         boxSizing: "border-box",
-        // Softer amber-gold instead of harsh neon yellow
         border: isWinning ? "3px solid #f0b429" : isScatter ? "none" : "1px solid rgba(0,0,0,0.6)",
         borderRadius: "4px",
         zIndex: isWinning ? 10 : 1,
@@ -121,7 +118,6 @@ function SymbolCard({
           : isDropping
             ? `transform 0.55s cubic-bezier(0.22, 1.1, 0.4, 1) ${enterDelay}ms, opacity 0.35s ease ${enterDelay}ms, filter 0.3s ease`
             : `transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) ${enterDelay}ms, opacity 0.2s ease ${enterDelay}ms, filter 0.3s ease`,
-        // Softer warm gold glow instead of the harsh bright-yellow glow
         boxShadow: isWinning
           ? "0 0 16px rgba(240,180,41,0.75), inset 0 0 8px rgba(240,180,41,0.45)"
           : isDropping && !dropVis
@@ -156,8 +152,6 @@ function SymbolCard({
                 pointerEvents: "none",
               }}
             />
-
-            {/* Shimmer sweep — diagonal light band sliding across the gold card */}
             {!flipped && (
               <div
                 style={{
@@ -173,8 +167,6 @@ function SymbolCard({
                 }}
               />
             )}
-
-            {/* Two small sparkle glints, staggered, for the "living" feel */}
             {!flipped && (
               <>
                 <div style={{
@@ -191,7 +183,6 @@ function SymbolCard({
                 }} />
               </>
             )}
-
             <img
               src={SYMBOL_IMAGES.WILD}
               alt="wild"
@@ -209,7 +200,6 @@ function SymbolCard({
         </div>
       ) : isScatter ? (
         <div style={{ position: "absolute", inset: 0 }}>
-          {/* Continuous coin glow, JILI-style — always active behind the scatter, not just on win */}
           <div style={{
             position: "absolute", inset: "8%",
             background: "radial-gradient(circle, rgba(255,215,90,0.55) 0%, rgba(255,215,90,0) 70%)",
@@ -249,10 +239,10 @@ function SymbolCard({
   );
 }
 
-function MultiplierBar({ current }: { current: number }) {
+function MultiplierBar({ current, steps }: { current: number; steps: number[] }) {
   return (
     <div style={{ display: "flex", gap: "4px", justifyContent: "center", alignItems: "center", padding: "4px 14px", background: "radial-gradient(ellipse at center, #7f1d1d, #450a0a)", border: "2px solid #d4af37", borderRadius: "24px", boxShadow: "0 4px 15px rgba(0,0,0,0.8)" }}>
-      {MULTIPLIERS.map((m) => {
+      {steps.map((m) => {
         const on = current >= m;
         return (
           <div key={m} style={{ padding: "4px 12px", borderRadius: "12px", fontWeight: 900, fontSize: "14px", fontFamily: "Arial, sans-serif", background: on ? "linear-gradient(180deg, #fef08a, #ca8a04)" : "rgba(0,0,0,0.5)", border: on ? "1.5px solid #ffffff" : "1px solid rgba(212,175,55,0.2)", color: on ? "#450a0a" : "rgba(255,255,255,0.4)", boxShadow: on ? "0 0 12px #fef08a" : "none", transition: "all 0.3s", transform: on ? "scale(1.1)" : "scale(1)" }}>
@@ -275,8 +265,6 @@ function TotalWinPopup({ amount, cascadeStep, visible, onClose }: { amount: numb
   return (
     <div style={{ position: "absolute", inset: 0, zIndex: 60, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", pointerEvents: "none", animation: "fadeIn 0.2s ease" }}>
       <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)" }} />
-
-      {/* Banner */}
       <div style={{ position: "absolute", top: "15%", display: "flex", flexDirection: "column", alignItems: "center", animation: "popupDrop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)" }}>
         <div style={{ background: "linear-gradient(90deg, transparent, rgba(212,175,55,0.9), transparent)", padding: "4px 60px", marginBottom: "4px" }}>
           <div style={{ fontSize: "18px", fontWeight: 900, color: "#fff", letterSpacing: "0.1em", textShadow: "0 2px 4px rgba(0,0,0,0.8)" }}>
@@ -289,10 +277,6 @@ function TotalWinPopup({ amount, cascadeStep, visible, onClose }: { amount: numb
           </div>
         )}
       </div>
-
-      {/* Massive Center Number — layered text-shadow stack simulates 3D
-          extrusion (a beveled, coin-embossed look) using pure CSS, no
-          image assets or WebGL required. */}
       <div
         style={{
           position: "relative",
@@ -319,6 +303,78 @@ function TotalWinPopup({ amount, cascadeStep, visible, onClose }: { amount: numb
         }}
       >
         {amount.toFixed(2)}
+      </div>
+    </div>
+  );
+}
+
+// New: Free Spins triggered banner — shown once when the bonus round starts
+function FreeSpinsWonPopup({ count, visible, onClose }: { count: number; visible: boolean; onClose: () => void }) {
+  useEffect(() => {
+    if (!visible) return;
+    const t = setTimeout(onClose, 2800);
+    return () => clearTimeout(t);
+  }, [visible, onClose]);
+
+  if (!visible) return null;
+  return (
+    <div style={{ position: "absolute", inset: 0, zIndex: 70, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", pointerEvents: "none", animation: "fadeIn 0.2s ease" }}>
+      <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.75)" }} />
+      <div style={{ position: "relative", zIndex: 75, display: "flex", flexDirection: "column", alignItems: "center", animation: "popupDrop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)" }}>
+        <div style={{ fontSize: "16px", fontWeight: 900, color: "#fff1a8", letterSpacing: "0.15em", marginBottom: "6px", textShadow: "0 2px 4px rgba(0,0,0,0.8)" }}>
+          SCATTER BONUS
+        </div>
+        <div style={{
+          fontSize: "36px", fontWeight: 900, letterSpacing: "0.05em",
+          backgroundImage: "linear-gradient(180deg, #fffbe0 0%, #ffe89a 25%, #fbc02d 55%, #c98a10 80%, #8a5a05 100%)",
+          WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent",
+          WebkitTextStroke: "1.2px #6b3f05",
+          textShadow: "0 3px 6px rgba(0,0,0,0.5), 0 0 30px rgba(255,215,110,0.6)",
+          animation: "numberPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)",
+        }}>
+          FREE SPINS WON
+        </div>
+        <div style={{
+          fontSize: "64px", fontWeight: 900, color: "#fff", marginTop: "8px",
+          textShadow: "0 4px 10px rgba(0,0,0,0.6), 0 0 20px rgba(255,215,110,0.5)",
+          animation: "pulseScale 1s infinite alternate",
+        }}>
+          {count}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// New: Bonus round completion summary — shown once the last free spin resolves
+function FreeSpinsCompletePopup({ totalWin, visible, onClose }: { totalWin: number; visible: boolean; onClose: () => void }) {
+  useEffect(() => {
+    if (!visible) return;
+    const t = setTimeout(onClose, 3200);
+    return () => clearTimeout(t);
+  }, [visible, onClose]);
+
+  if (!visible) return null;
+  return (
+    <div style={{ position: "absolute", inset: 0, zIndex: 70, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", pointerEvents: "none", animation: "fadeIn 0.2s ease" }}>
+      <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.75)" }} />
+      <div style={{ position: "relative", zIndex: 75, display: "flex", flexDirection: "column", alignItems: "center", animation: "popupDrop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)" }}>
+        <div style={{ fontSize: "16px", fontWeight: 900, color: "#fff1a8", letterSpacing: "0.15em", marginBottom: "6px", textShadow: "0 2px 4px rgba(0,0,0,0.8)" }}>
+          FREE SPINS COMPLETE
+        </div>
+        <div style={{ fontSize: "14px", color: "#e8d9b0", marginBottom: "10px", letterSpacing: "0.1em" }}>
+          TOTAL BONUS WIN
+        </div>
+        <div style={{
+          fontSize: "72px", fontWeight: 900, letterSpacing: "0.02em",
+          backgroundImage: "linear-gradient(180deg, #fffbe0 0%, #ffe89a 25%, #fbc02d 55%, #c98a10 80%, #8a5a05 100%)",
+          WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent",
+          WebkitTextStroke: "1.5px #6b3f05",
+          textShadow: "0 5px 10px rgba(0,0,0,0.55), 0 0 30px rgba(255,215,110,0.6)",
+          animation: "numberPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)",
+        }}>
+          {totalWin.toFixed(2)}
+        </div>
       </div>
     </div>
   );
@@ -380,9 +436,17 @@ export default function GamePage() {
   const [removingPositions, setRemovingPositions] = useState<string[]>([]);
   const [droppingPositions, setDroppingPositions] = useState<string[]>([]);
 
+  // Free Spins state
+  const [showFreeSpinsWon, setShowFreeSpinsWon] = useState(false);
+  const [freeSpinsAwardedCount, setFreeSpinsAwardedCount] = useState(0);
+  const [showFreeSpinsComplete, setShowFreeSpinsComplete] = useState(false);
+  const [freeSpinTotalWin, setFreeSpinTotalWin] = useState(0);
+  const freeSpinBetRef = useRef(1); // bet amount locked at the moment the bonus triggered
+
   const winShownRef = useRef(false);
   const tokenRef = useRef(token);
   const userIdRef = useRef(userId);
+  const spinLockRef = useRef(false); // synchronous guard against double-fire from fast double clicks/taps
 
   useEffect(() => { tokenRef.current = token; }, [token]);
   useEffect(() => { userIdRef.current = userId; }, [userId]);
@@ -427,6 +491,7 @@ export default function GamePage() {
   };
 
   const changeBet = (dir: 1 | -1) => {
+    if (isFreeSpinMode) return; // bet is locked during the bonus round
     const idx = BET_OPTIONS.indexOf(betAmount);
     const next = idx + dir;
     if (next >= 0 && next < BET_OPTIONS.length) setBetAmount(BET_OPTIONS[next]);
@@ -437,7 +502,11 @@ export default function GamePage() {
     winShownRef.current = false;
   }, []);
 
-  const doSpin = useCallback(async (tkn: string, bet: number, turbo: boolean, freeMode: boolean) => {
+  // doSpin now takes an isFreeSpin flag. When true: no bet is deducted
+  // locally, spinSaga is called with isFreeSpinMode=true (which tells
+  // saga-service to skip the wallet deduction entirely — see saga.ts),
+  // and the free-spin multiplier ladder is used instead of the base one.
+  const doSpin = useCallback(async (tkn: string, bet: number, turbo: boolean, isFreeSpin: boolean) => {
     setSpinning(true);
     setLastWin(0);
     setWinPositions([]);
@@ -449,13 +518,18 @@ export default function GamePage() {
       const clientSeed = `seed-${Date.now()}-${Math.random().toString(36).slice(2)}`;
       const sessionRes = await createGameSession(userIdRef.current, bet, clientSeed);
       const sessionId = sessionRes.data.sessionId;
-      setBalance((b: number) => Number((b - bet).toFixed(8)));
-      const sagaRes = await spinSaga(userIdRef.current, sessionId, bet, clientSeed);
+
+      if (!isFreeSpin) {
+        setBalance((b: number) => Number((b - bet).toFixed(8)));
+      }
+
+      const sagaRes = await spinSaga(
+        userIdRef.current, sessionId, bet, clientSeed,
+        isFreeSpin, isFreeSpin ? FREE_SPIN_MULTIPLIERS[0] : 1
+      );
       if (!sagaRes.data.success) throw new Error(sagaRes.data.saga?.error || "Saga failed");
       const result = sagaRes.data.saga.result;
 
-      // 1. Show the LANDED grid first — any golden cards are visible with
-      // their gold treatment, not yet flipped to WILD.
       setGrid(result.landedGrid || result.grid);
       setIsNewGrid(true);
       setCascadeStep(0);
@@ -463,25 +537,19 @@ export default function GamePage() {
       const landDelay = turbo ? 250 : 500;
       await delay(landDelay);
 
-      // 2. If any golden cards landed, run the staggered flip reveal before
-      // committing the fully revealed grid (WILD in place of GOLDEN).
       const goldenPositions: number[][] = result.goldenPositions || [];
       let workingGrid = result.grid;
       if (goldenPositions.length > 0) {
         const revealKeys = goldenPositions.map(([reel, row]) => `${reel}-${row}`);
         setRevealingPositions(revealKeys);
-
         const staggerStep = turbo ? 40 : 80;
         const flipDuration = turbo ? 300 : 550;
         const totalFlipTime = (goldenPositions.length - 1) * staggerStep + flipDuration;
         await delay(totalFlipTime);
-
-        setGrid(workingGrid); // commit fully revealed grid
+        setGrid(workingGrid);
         setRevealingPositions([]);
       }
 
-      // 3. Show the FIRST evaluation's wins — these are correctly positioned
-      // against `workingGrid`, since no cascade has happened yet.
       const initialWinPos: string[] = [];
       (result.wins || []).forEach((w: any) => w.positions.forEach(([reel, row]: number[]) => initialWinPos.push(`${reel}-${row}`)));
       if (initialWinPos.length > 0) {
@@ -489,33 +557,20 @@ export default function GamePage() {
         await delay(turbo ? 350 : 700);
       }
 
-      // 4. Play each cascade step in sequence. Each cascade's win positions
-      // are highlighted on the grid they actually occurred on, then those
-      // symbols shrink out, then the step's newGrid is committed with a
-      // slower, glowing drop-in (per your JDB reference), then that step's
-      // own wins are highlighted next.
       const cascades = result.cascades || [];
       for (let i = 0; i < cascades.length; i++) {
         const step = cascades[i];
         const removeKeys: string[] = (step.removedPositions || []).map(([reel, row]: number[]) => `${reel}-${row}`);
-
-        // shrink/fade the winning symbols from the CURRENT grid out
         setRemovingPositions(removeKeys);
         await delay(turbo ? 180 : 300);
-
-        // commit the refilled grid for this step, and mark those same
-        // positions as "dropping in" — slower fall with a glow trail
         workingGrid = step.newGrid;
         setGrid(workingGrid);
         setRemovingPositions([]);
         setDroppingPositions(removeKeys);
         setMultiplier(step.multiplier);
         setCascadeStep(i + 1);
-
         await delay(turbo ? 320 : 600);
         setDroppingPositions([]);
-
-        // highlight this step's own wins, on the grid that now reflects them
         const stepWinPos: string[] = [];
         (step.wins || []).forEach((w: any) => w.positions.forEach(([reel, row]: number[]) => stepWinPos.push(`${reel}-${row}`)));
         setWinPositions(stepWinPos);
@@ -524,9 +579,13 @@ export default function GamePage() {
 
       const jackpotWin = result.jackpot?.triggered ? result.jackpot.winAmount : 0;
       const displayWin = result.totalWin + jackpotWin;
+
       if (displayWin > 0) {
         setBalance((b: number) => Number((b + displayWin).toFixed(8)));
         setLastWin(displayWin);
+        if (isFreeSpin) {
+          setFreeSpinTotalWin((prev) => Number((prev + displayWin).toFixed(8)));
+        }
         if (!winShownRef.current) {
           winShownRef.current = true;
           setWinAmount(displayWin);
@@ -535,31 +594,71 @@ export default function GamePage() {
       } else {
         setWinPositions([]);
       }
-      if (result.freeSpinsAwarded > 0) setFreeSpinMode(true, result.freeSpinsAwarded);
+
+      // A fresh Free Spins trigger during the base game (not while already
+      // in a bonus round — most versions of this mechanic don't retrigger
+      // mid-bonus, keeping this simple and predictable).
+      if (result.freeSpinsAwarded > 0 && !isFreeSpin) {
+        freeSpinBetRef.current = bet;
+        setFreeSpinTotalWin(0);
+        setFreeSpinsAwardedCount(result.freeSpinsAwarded);
+        setFreeSpinMode(true, result.freeSpinsAwarded);
+        setShowFreeSpinsWon(true);
+      }
+
+      if (isFreeSpin) {
+        const remaining = freeSpinsLeft - 1;
+        if (remaining <= 0) {
+          setFreeSpinMode(false, 0);
+          setShowFreeSpinsComplete(true);
+        } else {
+          setFreeSpinMode(true, remaining);
+        }
+      }
+
       if (jackpotWin > 0) setMessage(`JACKPOT! ${result.jackpot.tier?.toUpperCase()}`);
     } catch (err: any) {
       setMessage(err.message || "Spin error");
     } finally {
       setSpinning(false);
     }
-  }, [userIdRef, setSpinning, setLastWin, setWinPositions, setIsNewGrid, setShowWin, setSpinDeg, setBalance, setGrid, setMultiplier, setCascadeStep, setWinAmount, setFreeSpinMode, setMessage]);
+  }, [userIdRef, freeSpinsLeft, setSpinning, setLastWin, setWinPositions, setIsNewGrid, setShowWin, setSpinDeg, setBalance, setGrid, setMultiplier, setCascadeStep, setWinAmount, setFreeSpinMode, setMessage]);
 
   const handleSpin = useCallback(async () => {
-    if (!tokenRef.current || isSpinning) return;
-    await doSpin(tokenRef.current, betAmount, isTurbo, isFreeSpinMode);
-  }, [isSpinning, betAmount, isTurbo, isFreeSpinMode, doSpin, tokenRef]);
+    if (!tokenRef.current || isSpinning || isFreeSpinMode) return;
+    if (spinLockRef.current) return;
+    spinLockRef.current = true;
+    try {
+      await doSpin(tokenRef.current, betAmount, isTurbo, false);
+    } finally {
+      spinLockRef.current = false;
+    }
+  }, [isSpinning, isFreeSpinMode, betAmount, isTurbo, doSpin, tokenRef]);
 
   useEffect(() => {
-    if (!isAuto || isSpinning || !token || autoSpins <= 0) {
+    if (!isAuto || isSpinning || !token || autoSpins <= 0 || isFreeSpinMode) {
       if (isAuto && autoSpins <= 0) setIsAuto(false);
       return;
     }
     const t = setTimeout(() => {
+      if (spinLockRef.current) return;
+      spinLockRef.current = true;
       setAutoSpins((n) => n - 1);
-      doSpin(token, betAmount, isTurbo, isFreeSpinMode);
+      doSpin(token, betAmount, isTurbo, false).finally(() => { spinLockRef.current = false; });
     }, isTurbo ? 400 : 1200);
     return () => clearTimeout(t);
   }, [isAuto, isSpinning, autoSpins, token, betAmount, isTurbo, isFreeSpinMode, doSpin]);
+
+  // Auto-play loop for Free Spins: fires automatically once the trigger
+  // banner has been dismissed, uses the locked bet amount, and keeps
+  // going until freeSpinsLeft hits 0 (handled inside doSpin above).
+  useEffect(() => {
+    if (!isFreeSpinMode || isSpinning || !token || freeSpinsLeft <= 0 || showFreeSpinsWon) return;
+    const t = setTimeout(() => {
+      doSpin(token, freeSpinBetRef.current, isTurbo, true);
+    }, isTurbo ? 500 : 1000);
+    return () => clearTimeout(t);
+  }, [isFreeSpinMode, isSpinning, token, freeSpinsLeft, showFreeSpinsWon, isTurbo, doSpin]);
 
   const displayGrid = grid.length > 0 ? grid : Array.from({ length: 5 }, (_, i) => Array.from({ length: 4 }, (_, j) => ["A", "K", "Q", "J"][(i + j) % 4]));
   const isAnyWin = winPositions.length > 0 && showWin;
@@ -598,15 +697,29 @@ export default function GamePage() {
         <div style={{ position: "absolute", inset: 0, zIndex: 0, pointerEvents: "none", background: "radial-gradient(circle at 50% 40%, rgba(212,175,55,0.15), transparent 60%)", animation: "bgPulse 6s ease-in-out infinite" }} />
 
         <TotalWinPopup amount={winAmount} cascadeStep={cascadeStep} visible={showWin} onClose={handleCloseWin} />
+        <FreeSpinsWonPopup count={freeSpinsAwardedCount} visible={showFreeSpinsWon} onClose={() => setShowFreeSpinsWon(false)} />
+        <FreeSpinsCompletePopup totalWin={freeSpinTotalWin} visible={showFreeSpinsComplete} onClose={() => setShowFreeSpinsComplete(false)} />
         <JackpotDrawer jackpots={jackpots} isOpen={showJackpotDrawer} onClose={() => setShowJackpotDrawer(false)} />
 
-        {/* Jackpot Trigger Tab - Moved higher to Top 8% */}
         <button
           onClick={() => setShowJackpotDrawer(true)}
           style={{ position: "absolute", left: 0, top: "8%", zIndex: 20, width: "32px", height: "70px", background: "linear-gradient(90deg, #854d0e, #451a03)", border: "2px solid #fef08a", borderLeft: "none", borderRadius: "0 8px 8px 0", color: "#fef08a", fontSize: "12px", fontWeight: 900, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", writingMode: "vertical-rl", textOrientation: "mixed", boxShadow: "2px 0 10px rgba(0,0,0,0.8)" }}
         >
           JP
         </button>
+
+        {isFreeSpinMode && (
+          <div style={{
+            position: "absolute", top: "8%", right: 0, zIndex: 20,
+            background: "linear-gradient(90deg, #451a03, #854d0e)",
+            border: "2px solid #fef08a", borderRight: "none", borderRadius: "8px 0 0 8px",
+            padding: "8px 14px", color: "#fef08a", fontWeight: 900, fontSize: "13px",
+            boxShadow: "-2px 0 10px rgba(0,0,0,0.8)", textAlign: "center",
+          }}>
+            <div style={{ fontSize: "9px", letterSpacing: "0.1em", opacity: 0.85 }}>FREE SPINS</div>
+            <div style={{ fontSize: "18px" }}>{freeSpinsLeft}</div>
+          </div>
+        )}
 
         {showBetPanel && (
           <div onClick={() => setShowBetPanel(false)} style={{ position: "absolute", inset: 0, zIndex: 50, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "flex-end" }}>
@@ -634,14 +747,12 @@ export default function GamePage() {
           </div>
         )}
 
-        {/* Top Header: Safe Area & Multiplier Bar */}
         <div style={{ flexShrink: 0, paddingTop: "calc(24px + env(safe-area-inset-top))", paddingBottom: "10px", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 10, position: "relative" }}>
-          <MultiplierBar current={multiplier} />
+          <MultiplierBar current={multiplier} steps={isFreeSpinMode ? FREE_SPIN_MULTIPLIERS : BASE_MULTIPLIERS} />
         </div>
 
-        {/* Game Grid Container - 1/1 Aspect Ratio */}
         <div style={{ flex: 1, padding: "0 8px", minHeight: 0, display: "flex", alignItems: "center", justifyContent: "center", position: "relative", zIndex: 5 }}>
-          <div style={{ width: "100%", aspectRatio: "1/1", background: "rgba(0,0,0,0.5)", border: "2px solid rgba(212,175,55,0.7)", borderRadius: "6px", padding: "1px", boxShadow: "inset 0 0 20px rgba(0,0,0,0.9), 0 0 15px rgba(212,175,55,0.2)" }}>
+          <div style={{ width: "100%", aspectRatio: "1/1", background: "rgba(0,0,0,0.5)", border: isFreeSpinMode ? "2px solid #fef08a" : "2px solid rgba(212,175,55,0.7)", borderRadius: "6px", padding: "1px", boxShadow: isFreeSpinMode ? "inset 0 0 20px rgba(0,0,0,0.9), 0 0 25px rgba(254,240,138,0.4)" : "inset 0 0 20px rgba(0,0,0,0.9), 0 0 15px rgba(212,175,55,0.2)" }}>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gridTemplateRows: "repeat(4, 1fr)", gap: "0", width: "100%", height: "100%" }}>
               {Array.from({ length: 4 }, (_, row) =>
                 displayGrid.map((col, reel) => {
@@ -667,43 +778,44 @@ export default function GamePage() {
           </div>
         </div>
 
-        {/* Bottom Area: Actions ABOVE Info Bar with Safe Area Bottom Padding */}
         <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", position: "relative", zIndex: 10, background: "linear-gradient(180deg, #3e1c12, #210d07)", borderTop: "2px solid #d4af37", paddingBottom: "calc(24px + env(safe-area-inset-bottom))", boxShadow: "0 -4px 15px rgba(0,0,0,0.8)" }}>
 
-          {/* Action Row: Spin, Turbo, Auto, +/- */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 12px 16px" }}>
             <button onClick={() => setIsTurbo((t) => !t)} style={{ width: `${SMALL_BTN}px`, height: `${SMALL_BTN}px`, borderRadius: "50%", border: `1.5px solid ${isTurbo ? "#fef08a" : "rgba(212,175,55,0.4)"}`, background: isTurbo ? "#ca8a04" : "linear-gradient(180deg, #3e1c12, #180505)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: isTurbo ? "0 0 12px #ca8a04" : "0 4px 6px rgba(0,0,0,0.5)" }}>
               <IconLightning c={isTurbo ? "#ffffff" : "#d4af37"} />
             </button>
 
-            <button onClick={() => changeBet(-1)} style={{ width: `${SMALL_BTN}px`, height: `${SMALL_BTN}px`, borderRadius: "50%", border: "1.5px solid rgba(212,175,55,0.4)", background: "linear-gradient(180deg, #3e1c12, #180505)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 6px rgba(0,0,0,0.5)" }}>
+            <button onClick={() => changeBet(-1)} disabled={isFreeSpinMode} style={{ width: `${SMALL_BTN}px`, height: `${SMALL_BTN}px`, borderRadius: "50%", border: "1.5px solid rgba(212,175,55,0.4)", background: "linear-gradient(180deg, #3e1c12, #180505)", cursor: isFreeSpinMode ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 6px rgba(0,0,0,0.5)", opacity: isFreeSpinMode ? 0.4 : 1 }}>
               <IconMinus />
             </button>
 
-            {/* MAIN SPIN BUTTON */}
-            <button onClick={isAuto ? () => { setIsAuto(false); setAutoSpins(0); } : handleSpin} disabled={isSpinning && !isAuto} style={{ width: `${SPIN_BTN}px`, height: `${SPIN_BTN}px`, borderRadius: "50%", border: "2px solid #fef08a", cursor: "pointer", background: "radial-gradient(circle, #fef08a, #ca8a04, #713f12)", boxShadow: isSpinning ? "0 0 25px #fef08a" : "0 6px 15px rgba(0,0,0,0.9)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
+            <button
+              onClick={isAuto ? () => { setIsAuto(false); setAutoSpins(0); } : handleSpin}
+              disabled={(isSpinning && !isAuto) || isFreeSpinMode}
+              style={{ width: `${SPIN_BTN}px`, height: `${SPIN_BTN}px`, borderRadius: "50%", border: "2px solid #fef08a", cursor: isFreeSpinMode ? "not-allowed" : "pointer", background: "radial-gradient(circle, #fef08a, #ca8a04, #713f12)", boxShadow: isSpinning ? "0 0 25px #fef08a" : "0 6px 15px rgba(0,0,0,0.9)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden", opacity: isFreeSpinMode ? 0.6 : 1 }}
+            >
               <img src="/assets/symbols/spin-button.webp" alt="SPIN" style={{ position: "absolute", top: "50%", left: "50%", width: "125%", height: "125%", objectFit: "cover", transform: `translate(-50%, -50%) rotate(${spinDeg}deg)`, transition: isSpinning ? "transform 0.8s ease" : "transform 0.2s ease", pointerEvents: "none" }} />
               {isAuto && <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(0,0,0,0.6)", borderRadius:"50%", color:"#fff", fontWeight:900, fontSize:"16px", textShadow: "0 2px 4px #000" }}>{autoSpins}</div>}
+              {isFreeSpinMode && <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(0,0,0,0.5)", borderRadius:"50%", color:"#fef08a", fontWeight:900, fontSize:"13px", textShadow: "0 2px 4px #000" }}>AUTO</div>}
             </button>
 
-            <button onClick={() => changeBet(1)} style={{ width: `${SMALL_BTN}px`, height: `${SMALL_BTN}px`, borderRadius: "50%", border: "1.5px solid rgba(212,175,55,0.4)", background: "linear-gradient(180deg, #3e1c12, #180505)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 6px rgba(0,0,0,0.5)" }}>
+            <button onClick={() => changeBet(1)} disabled={isFreeSpinMode} style={{ width: `${SMALL_BTN}px`, height: `${SMALL_BTN}px`, borderRadius: "50%", border: "1.5px solid rgba(212,175,55,0.4)", background: "linear-gradient(180deg, #3e1c12, #180505)", cursor: isFreeSpinMode ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 6px rgba(0,0,0,0.5)", opacity: isFreeSpinMode ? 0.4 : 1 }}>
               <IconPlus />
             </button>
 
-            <button onClick={() => setShowAutoPanel(true)} style={{ width: `${SMALL_BTN}px`, height: `${SMALL_BTN}px`, borderRadius: "50%", border: `1.5px solid ${isAuto ? "#a855f7" : "rgba(212,175,55,0.4)"}`, background: isAuto ? "#7e22ce" : "linear-gradient(180deg, #3e1c12, #180505)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: isAuto ? "0 0 12px #7e22ce" : "0 4px 6px rgba(0,0,0,0.5)" }}>
+            <button onClick={() => setShowAutoPanel(true)} disabled={isFreeSpinMode} style={{ width: `${SMALL_BTN}px`, height: `${SMALL_BTN}px`, borderRadius: "50%", border: `1.5px solid ${isAuto ? "#a855f7" : "rgba(212,175,55,0.4)"}`, background: isAuto ? "#7e22ce" : "linear-gradient(180deg, #3e1c12, #180505)", cursor: isFreeSpinMode ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: isAuto ? "0 0 12px #7e22ce" : "0 4px 6px rgba(0,0,0,0.5)", opacity: isFreeSpinMode ? 0.4 : 1 }}>
               <IconAuto c={isAuto ? "#ffffff" : "#d4af37"} />
             </button>
           </div>
 
-          {/* Info Row: Wallet | Bet | Win (COMPRESSED) */}
           <div style={{ background: "rgba(0,0,0,0.85)", borderTop: "1px solid #d4af37", padding: "6px 12px", display: "flex", gap: "6px" }}>
             <div style={{ flex: 1, padding: "2px", textAlign: "center" }}>
               <div style={{ fontSize: "9px", color: "rgba(255,255,255,0.5)", marginBottom: "2px", letterSpacing: "0.05em" }}>WALLET</div>
               <div style={{ fontSize: "12px", fontWeight: 800, color: "#4ade80", fontFamily: "monospace" }}>${Number(balance).toFixed(2)}</div>
             </div>
-            <div onClick={() => setShowBetPanel(true)} style={{ flex: 1, borderLeft: "1px solid rgba(212,175,55,0.3)", borderRight: "1px solid rgba(212,175,55,0.3)", padding: "2px", textAlign: "center", cursor: "pointer" }}>
+            <div onClick={() => !isFreeSpinMode && setShowBetPanel(true)} style={{ flex: 1, borderLeft: "1px solid rgba(212,175,55,0.3)", borderRight: "1px solid rgba(212,175,55,0.3)", padding: "2px", textAlign: "center", cursor: isFreeSpinMode ? "not-allowed" : "pointer" }}>
               <div style={{ fontSize: "9px", color: "#d4af37", marginBottom: "2px", letterSpacing: "0.05em" }}>BET</div>
-              <div style={{ fontSize: "12px", fontWeight: 800, color: "#ffffff", fontFamily: "monospace" }}>${betAmount.toFixed(2)}</div>
+              <div style={{ fontSize: "12px", fontWeight: 800, color: "#ffffff", fontFamily: "monospace" }}>${(isFreeSpinMode ? freeSpinBetRef.current : betAmount).toFixed(2)}</div>
             </div>
             <div style={{ flex: 1, padding: "2px", textAlign: "center" }}>
               <div style={{ fontSize: "9px", color: "rgba(255,255,255,0.5)", marginBottom: "2px", letterSpacing: "0.05em" }}>WIN</div>

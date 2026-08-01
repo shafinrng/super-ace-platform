@@ -18,6 +18,8 @@ export interface SpinSaga {
   currency: string;
   clientSeed: string;
   reelLengths: number[];
+  isFreeSpinMode?: boolean;
+  freeSpinMultiplier?: number;
   status: "started" | "bet_deducted" | "spin_generated" | "completed" | "compensating" | "failed";
   result?: {
     stops: number[];
@@ -53,6 +55,7 @@ async function ensureSeed(playerId: string) {
 export async function executeSpinSaga(params: {
   playerId: string; sessionId: string; betAmount: number; currency: string;
   clientSeed: string; reelLengths: number[];
+  isFreeSpinMode?: boolean; freeSpinMultiplier?: number;
 }): Promise<SpinSaga> {
   const sagaId = uuidv4();
   const saga: SpinSaga = { sagaId, ...params, status: "started", createdAt: Date.now() };
@@ -63,17 +66,23 @@ export async function executeSpinSaga(params: {
 
     saga.status = "bet_deducted";
     await logSaga(saga);
-    const deductRes = await axios.post(`${WALLET_URL}/api/wallet/service/bet`, {
-      userId: params.playerId, amount: params.betAmount,
-    });
-    if (!deductRes.data.success) throw new Error("Wallet deduction failed");
 
-    // Contribute to jackpot pools now that the bet is confirmed taken.
-    // Non-critical: if jackpot-service is briefly unavailable, do not fail the whole spin.
-    try {
-      await axios.post(`${JACKPOT_URL}/jackpots/contribute`, { betAmount: params.betAmount });
-    } catch (jpErr) {
-      console.error("Jackpot contribution failed (non-fatal):", (jpErr as any).message);
+    // Free spins were already paid for when the bonus was triggered —
+    // do not deduct the bet again, and do not contribute to jackpots
+    // (which are funded by real wagers) during a free spin.
+    if (!params.isFreeSpinMode) {
+      const deductRes = await axios.post(`${WALLET_URL}/api/wallet/service/bet`, {
+        userId: params.playerId, amount: params.betAmount,
+      });
+      if (!deductRes.data.success) throw new Error("Wallet deduction failed");
+
+      // Contribute to jackpot pools now that the bet is confirmed taken.
+      // Non-critical: if jackpot-service is briefly unavailable, do not fail the whole spin.
+      try {
+        await axios.post(`${JACKPOT_URL}/jackpots/contribute`, { betAmount: params.betAmount });
+      } catch (jpErr) {
+        console.error("Jackpot contribution failed (non-fatal):", (jpErr as any).message);
+      }
     }
 
     saga.status = "spin_generated";
@@ -86,6 +95,8 @@ export async function executeSpinSaga(params: {
 
     const winRes = await axios.post(`${GAME_URL}/api/game/calculate-win`, {
       stops, betAmount: params.betAmount, playerId: params.playerId,
+      isFreeSpinMode: params.isFreeSpinMode || false,
+      freeSpinMultiplier: params.freeSpinMultiplier || 1,
     });
     const winAmount = winRes.data.winAmount;
     const fullResult = winRes.data.result || {};
@@ -122,7 +133,9 @@ export async function executeSpinSaga(params: {
     await logSaga(saga);
 
     try {
-      if (previousStatus === "bet_deducted" || previousStatus === "spin_generated") {
+      // Only refund a bet that was actually taken — free spins never
+      // deducted one, so there's nothing to compensate.
+      if (!params.isFreeSpinMode && (previousStatus === "bet_deducted" || previousStatus === "spin_generated")) {
         await axios.post(`${WALLET_URL}/api/wallet/service/win`, {
           userId: params.playerId, amount: params.betAmount, reference: `${sagaId}:refund`,
         });
