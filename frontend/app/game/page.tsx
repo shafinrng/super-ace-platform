@@ -24,6 +24,7 @@ const BASE_MULTIPLIERS = [1, 2, 3, 5];
 const FREE_SPIN_MULTIPLIERS = [2, 4, 6, 10];
 const BET_OPTIONS = [0.02, 0.05, 0.10, 0.20, 0.50, 1, 2, 5, 10, 20, 50, 100, 200, 500];
 const AUTO_OPTIONS = [10, 25, 50, 100];
+const MAX_FREE_SPINS_TOTAL = 30; // hard safety ceiling — no bonus round can exceed this, regardless of retriggers
 
 const SMALL_BTN = 42;
 const SPIN_BTN = 72;
@@ -308,7 +309,6 @@ function TotalWinPopup({ amount, cascadeStep, visible, onClose }: { amount: numb
   );
 }
 
-// New: Free Spins triggered banner — shown once when the bonus round starts
 function FreeSpinsWonPopup({ count, visible, onClose }: { count: number; visible: boolean; onClose: () => void }) {
   useEffect(() => {
     if (!visible) return;
@@ -346,7 +346,41 @@ function FreeSpinsWonPopup({ count, visible, onClose }: { count: number; visible
   );
 }
 
-// New: Bonus round completion summary — shown once the last free spin resolves
+// Retrigger — shown when 3+ scatters land DURING an active bonus round.
+// Smaller/quicker than the initial trigger banner since it's an addition
+// to an already-running bonus, not a brand new one.
+function RetriggerPopup({ amount, visible, onClose }: { amount: number; visible: boolean; onClose: () => void }) {
+  useEffect(() => {
+    if (!visible) return;
+    const t = setTimeout(onClose, 1800);
+    return () => clearTimeout(t);
+  }, [visible, onClose]);
+
+  if (!visible) return null;
+  return (
+    <div style={{ position: "absolute", inset: 0, zIndex: 68, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
+      <div style={{
+        display: "flex", flexDirection: "column", alignItems: "center",
+        animation: "popupDrop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)",
+        background: "rgba(0,0,0,0.55)", borderRadius: "16px", padding: "16px 32px",
+        border: "2px solid #fef08a",
+      }}>
+        <div style={{ fontSize: "13px", fontWeight: 900, color: "#fff1a8", letterSpacing: "0.15em" }}>RETRIGGER</div>
+        <div style={{
+          fontSize: "40px", fontWeight: 900, marginTop: "4px",
+          backgroundImage: "linear-gradient(180deg, #fffbe0 0%, #ffe89a 25%, #fbc02d 55%, #c98a10 80%, #8a5a05 100%)",
+          WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent",
+          WebkitTextStroke: "1.2px #6b3f05",
+          textShadow: "0 3px 6px rgba(0,0,0,0.5), 0 0 20px rgba(255,215,110,0.6)",
+          animation: "pulseScale 0.8s infinite alternate",
+        }}>
+          +{amount} SPINS
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function FreeSpinsCompletePopup({ totalWin, visible, onClose }: { totalWin: number; visible: boolean; onClose: () => void }) {
   useEffect(() => {
     if (!visible) return;
@@ -441,6 +475,8 @@ export default function GamePage() {
   const [freeSpinsAwardedCount, setFreeSpinsAwardedCount] = useState(0);
   const [showFreeSpinsComplete, setShowFreeSpinsComplete] = useState(false);
   const [freeSpinTotalWin, setFreeSpinTotalWin] = useState(0);
+  const [showRetrigger, setShowRetrigger] = useState(false);
+  const [retriggerAmount, setRetriggerAmount] = useState(0);
   const freeSpinBetRef = useRef(1); // bet amount locked at the moment the bonus triggered
 
   const winShownRef = useRef(false);
@@ -595,25 +631,31 @@ export default function GamePage() {
         setWinPositions([]);
       }
 
-      // A fresh Free Spins trigger during the base game (not while already
-      // in a bonus round — most versions of this mechanic don't retrigger
-      // mid-bonus, keeping this simple and predictable).
-      if (result.freeSpinsAwarded > 0 && !isFreeSpin) {
-        freeSpinBetRef.current = bet;
-        setFreeSpinTotalWin(0);
-        setFreeSpinsAwardedCount(result.freeSpinsAwarded);
-        setFreeSpinMode(true, result.freeSpinsAwarded);
-        setShowFreeSpinsWon(true);
-      }
-
       if (isFreeSpin) {
-        const remaining = freeSpinsLeft - 1;
+        // Retrigger: 3+ scatters landed DURING the bonus round. Add the
+        // awarded spins to what's left, rather than starting a fresh
+        // bonus round (that would wrongly reset the running total win).
+        const retrigger = result.freeSpinsAwarded > 0 ? result.freeSpinsAwarded : 0;
+        const remaining = Math.min(freeSpinsLeft - 1 + retrigger, MAX_FREE_SPINS_TOTAL);
+
+        if (retrigger > 0) {
+          setRetriggerAmount(retrigger);
+          setShowRetrigger(true);
+        }
+
         if (remaining <= 0) {
           setFreeSpinMode(false, 0);
           setShowFreeSpinsComplete(true);
         } else {
           setFreeSpinMode(true, remaining);
         }
+      } else if (result.freeSpinsAwarded > 0) {
+        // Fresh trigger from a normal base-game spin.
+        freeSpinBetRef.current = bet;
+        setFreeSpinTotalWin(0);
+        setFreeSpinsAwardedCount(result.freeSpinsAwarded);
+        setFreeSpinMode(true, result.freeSpinsAwarded);
+        setShowFreeSpinsWon(true);
       }
 
       if (jackpotWin > 0) setMessage(`JACKPOT! ${result.jackpot.tier?.toUpperCase()}`);
@@ -655,7 +697,9 @@ export default function GamePage() {
   useEffect(() => {
     if (!isFreeSpinMode || isSpinning || !token || freeSpinsLeft <= 0 || showFreeSpinsWon) return;
     const t = setTimeout(() => {
-      doSpin(token, freeSpinBetRef.current, isTurbo, true);
+      if (spinLockRef.current) return;
+      spinLockRef.current = true;
+      doSpin(token, freeSpinBetRef.current, isTurbo, true).finally(() => { spinLockRef.current = false; });
     }, isTurbo ? 500 : 1000);
     return () => clearTimeout(t);
   }, [isFreeSpinMode, isSpinning, token, freeSpinsLeft, showFreeSpinsWon, isTurbo, doSpin]);
@@ -698,6 +742,7 @@ export default function GamePage() {
 
         <TotalWinPopup amount={winAmount} cascadeStep={cascadeStep} visible={showWin} onClose={handleCloseWin} />
         <FreeSpinsWonPopup count={freeSpinsAwardedCount} visible={showFreeSpinsWon} onClose={() => setShowFreeSpinsWon(false)} />
+        <RetriggerPopup amount={retriggerAmount} visible={showRetrigger} onClose={() => setShowRetrigger(false)} />
         <FreeSpinsCompletePopup totalWin={freeSpinTotalWin} visible={showFreeSpinsComplete} onClose={() => setShowFreeSpinsComplete(false)} />
         <JackpotDrawer jackpots={jackpots} isOpen={showJackpotDrawer} onClose={() => setShowJackpotDrawer(false)} />
 

@@ -30,8 +30,13 @@ export async function spin(req: SpinRequest): Promise<SpinResult> {
   const multiplier = cascades.length > 0
     ? cascades[cascades.length - 1].multiplier
     : initialMultiplier;
-  const scatterCount = countScatters(grid);
+
+  // Check scatters on the FINAL grid (after cascades), not the initial
+  // one — a scatter dropped in during a cascade refill still counts.
+  const finalGrid = cascades.length > 0 ? cascades[cascades.length - 1].newGrid : grid;
+  const scatterCount = countScatters(finalGrid);
   const freeSpinsAwarded = scatterCount >= SCATTER_TRIGGER_COUNT ? FREE_SPINS_AWARDED : 0;
+
   return {
     grid,
     landedGrid,
@@ -68,8 +73,13 @@ export async function calculateWinFromStops(
   const multiplier = cascades.length > 0
     ? cascades[cascades.length - 1].multiplier
     : initialMultiplier;
-  const scatterCount = countScatters(grid);
+
+  // Check scatters on the FINAL grid (after cascades), not the initial
+  // one — a scatter dropped in during a cascade refill still counts.
+  const finalGrid = cascades.length > 0 ? cascades[cascades.length - 1].newGrid : grid;
+  const scatterCount = countScatters(finalGrid);
   const freeSpinsAwarded = scatterCount >= SCATTER_TRIGGER_COUNT ? FREE_SPINS_AWARDED : 0;
+
   return {
     grid,
     landedGrid,
